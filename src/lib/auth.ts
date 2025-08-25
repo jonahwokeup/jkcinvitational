@@ -8,14 +8,6 @@ const ACCESS_CODES = {
   "690077": { email: "max@jkc.com", name: "Max Reid" },
   "368740": { email: "abboud@jkc.com", name: "Abboud Hammour" },
   "247324": { email: "chris@jkc.com", name: "Chris Grube" },
-},
-  "762770": { email: "max@jkc.com", name: "Max Reid" },
-  "756052": { email: "abboud@jkc.com", name: "Abboud Hammour" },
-  "462722": { email: "chris@jkc.com", name: "Chris Grube" },
-},
-  "JKC002": { email: "max@jkc.com", name: "Max Reid" },
-  "JKC003": { email: "abboud@jkc.com", name: "Abboud Hammour" },
-  "JKC004": { email: "chris@jkc.com", name: "Chris Grube" },
 }
 
 const authOptions = {
