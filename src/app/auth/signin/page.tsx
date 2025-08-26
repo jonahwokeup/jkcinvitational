@@ -1,7 +1,7 @@
 "use client"
 
-import { signIn } from "next-auth/react"
-import { useState } from "react"
+import { signIn, getCsrfToken } from "next-auth/react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Key, ArrowLeft, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -10,7 +10,14 @@ export default function SignInPage() {
   const [accessCode, setAccessCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [csrfToken, setCsrfToken] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    getCsrfToken().then((token) => {
+      if (token) setCsrfToken(token)
+    })
+  }, [])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,6 +27,7 @@ export default function SignInPage() {
     try {
       const result = await signIn("credentials", {
         accessCode,
+        csrfToken,
         redirect: false,
       })
 
