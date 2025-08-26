@@ -11,6 +11,7 @@ const ACCESS_CODES = {
 }
 
 const authOptions = {
+  secret: process.env.AUTH_SECRET,
   session: {
     strategy: "jwt" as const,
   },
@@ -111,3 +112,5 @@ const authOptions = {
 }
 
 export default authOptions
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)
