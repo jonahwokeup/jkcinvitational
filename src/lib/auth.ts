@@ -11,7 +11,8 @@ const ACCESS_CODES = {
 }
 
 const authOptions = {
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
+  url: process.env.NEXTAUTH_URL,
   session: {
     strategy: "jwt" as const,
   },
