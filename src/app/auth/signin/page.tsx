@@ -73,7 +73,7 @@ export default function SignInPage() {
               onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-center text-lg tracking-wider"
-              placeholder="JKC001"
+              placeholder="651890"
               maxLength={6}
               disabled={isLoading}
             />
@@ -100,7 +100,7 @@ export default function SignInPage() {
             Contact the admin for your access code
           </p>
           <div className="mt-2 text-xs text-gray-500">
-            <p>Valid codes: JKC001, JKC002, JKC003, JKC004</p>
+            <p>Contact admin for your 6-digit access code</p>
           </div>
         </div>
       </div>
