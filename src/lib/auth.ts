@@ -18,8 +18,8 @@ export const hasAccessCode = (code: string): boolean => {
 }
 
 const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
-  url: process.env.NEXTAUTH_URL,
+  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
+  url: process.env.NEXTAUTH_URL || "http://localhost:3000",
   session: {
     strategy: "jwt" as const,
   },
@@ -102,7 +102,7 @@ const authOptions = {
             id: user.id,
             email: user.email,
             name: user.name || userInfo.name,
-            image: user.image
+            image: user.image || undefined
           }
           console.log("AUTH_DEBUG", { step: "success", resultSeen: Boolean(result?.id) })
           return result
@@ -119,6 +119,7 @@ const authOptions = {
         token.id = user.id
         token.email = user.email
         token.name = user.name
+        token.image = user.image
       }
       return token
     },
@@ -127,6 +128,7 @@ const authOptions = {
         session.user.id = token.id as string
         session.user.email = token.email as string
         session.user.name = token.name as string
+        session.user.image = token.image as string | undefined
       }
       return session
     },

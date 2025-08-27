@@ -1,4 +1,4 @@
-// This is your Prisma schema file for LOCAL DEVELOPMENT
+// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -115,7 +115,7 @@ model Entry {
   competition           Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   round                 Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   picks                 Pick[]
-  wonRounds            Round[]      @relation("RoundWinner")
+  wonRounds             Round[]      @relation("RoundWinner")
   seasonChampionOf      Competition[] @relation("SeasonChampion")
   
   @@unique([userId, competitionId, roundId])

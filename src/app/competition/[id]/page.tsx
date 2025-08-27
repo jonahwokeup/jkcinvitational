@@ -111,6 +111,11 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
           competitionName={competition.name}
           season={competition.season}
           inviteCode={competition.inviteCode}
+          currentUser={{
+            name: session.user.name || session.user.email || 'Unknown User',
+            email: session.user.email || '',
+            image: session.user.image || undefined
+          }}
         />
 
         {/* Current Round Status */}
