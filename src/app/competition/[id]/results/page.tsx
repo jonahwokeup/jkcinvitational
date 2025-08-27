@@ -14,9 +14,10 @@ interface ResultsPageProps {
 export default async function ResultsPage({ params }: ResultsPageProps) {
   const session = await getServerSession(authOptions) as Session | null
   
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
-  }
+  // Make results page viewable for all users (no sign-in requirement)
+  // if (!session?.user?.id) {
+  //   redirect('/auth/signin')
+  // }
 
   const { id: competitionId } = await params
   
@@ -58,11 +59,22 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     notFound()
   }
 
-  // Check if user is in this competition
-  const userEntry = competition.entries.find(entry => entry.userId === session.user!.id)
-  if (!userEntry) {
-    redirect(`/competition/${competition.id}`)
-  }
+  // Public page: do not require membership in competition
+  // const userEntry = competition.entries.find(entry => entry.userId === session?.user?.id)
+  // if (!userEntry) {
+  //   redirect(`/competition/${competition.id}`)
+  // }
+
+  // Order: settled (or in-progress) first, newest to oldest; then purely scheduled GWs ascending
+  const settledFirst = competition.gameweeks
+    .filter(gw => gw.isSettled || gw.fixtures.some(f => f.status === 'FINISHED'))
+    .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
+
+  const scheduledLater = competition.gameweeks
+    .filter(gw => !gw.isSettled && gw.fixtures.every(f => f.status === 'SCHEDULED'))
+    .sort((a, b) => a.gameweekNumber - b.gameweekNumber)
+
+  const orderedGameweeks = [...settledFirst, ...scheduledLater]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,12 +97,11 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
         {/* All Gameweek Results */}
         <div className="space-y-6">
-          {competition.gameweeks
-            .sort((a, b) => b.gameweekNumber - a.gameweekNumber) // Show most recent GW first
+          {orderedGameweeks
             .map(gameweek => (
               <div key={gameweek.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className={`px-6 py-4 border-b border-gray-200 ${
-                  gameweek.isSettled ? 'bg-green-50' : 'bg-blue-50'
+                  gameweek.isSettled ? 'bg-green-50' : gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'bg-blue-50' : 'bg-gray-50'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
