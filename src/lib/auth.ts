@@ -30,68 +30,85 @@ const authOptions = {
         accessCode: { label: "Access Code", type: "text" }
       },
       async authorize(credentials) {
-        if (!credentials?.accessCode) return null
-        
-        const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
-        if (!userInfo) return null
-        
-        // Get or create user
-        let user = await prisma.user.findUnique({
-          where: { email: userInfo.email }
-        })
-        
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              email: userInfo.email,
-              name: userInfo.name
-            }
+        try {
+          console.log("AUTH_DEBUG", { step: "start", code: credentials?.accessCode })
+          if (!credentials?.accessCode) return null
+
+          const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
+          if (!userInfo) {
+            console.log("AUTH_DEBUG", { step: "code_not_found" })
+            return null
+          }
+
+          // Get or create user
+          let user = await prisma.user.findUnique({
+            where: { email: userInfo.email }
           })
-        }
-        
-        // Get the competition (there's only one)
-        const competition = await prisma.competition.findFirst({
-          where: { name: "JKC Invitational" }
-        })
-        
-        if (competition) {
-          // Check if user is already in the competition
-          const existingEntry = await prisma.entry.findFirst({
-            where: {
-              userId: user.id,
-              competitionId: competition.id
-            }
-          })
-          
-          // If not in competition, add them to the current round
-          if (!existingEntry) {
-            const currentRound = await prisma.round.findFirst({
-              where: {
-                competitionId: competition.id,
-                endedAt: null
-              },
-              orderBy: { roundNumber: 'desc' }
+          console.log("AUTH_DEBUG", { step: "find_user", found: Boolean(user) })
+
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                email: userInfo.email,
+                name: userInfo.name
+              }
             })
-            
-            if (currentRound) {
-              await prisma.entry.create({
-                data: {
-                  userId: user.id,
+            console.log("AUTH_DEBUG", { step: "create_user", userId: user.id })
+          }
+
+          // Get the competition (there's only one)
+          const competition = await prisma.competition.findFirst({
+            where: { name: "JKC Invitational" }
+          })
+          console.log("AUTH_DEBUG", { step: "find_competition", found: Boolean(competition) })
+
+          if (competition) {
+            // Check if user is already in the competition
+            const existingEntry = await prisma.entry.findFirst({
+              where: {
+                userId: user.id,
+                competitionId: competition.id
+              }
+            })
+            console.log("AUTH_DEBUG", { step: "find_entry", found: Boolean(existingEntry) })
+
+            // If not in competition, add them to the current round
+            if (!existingEntry) {
+              const currentRound = await prisma.round.findFirst({
+                where: {
                   competitionId: competition.id,
-                  roundId: currentRound.id,
-                  livesRemaining: competition.livesPerRound,
-                }
+                  endedAt: null
+                },
+                orderBy: { roundNumber: 'desc' }
               })
+              console.log("AUTH_DEBUG", { step: "find_current_round", found: Boolean(currentRound) })
+
+              if (currentRound) {
+                await prisma.entry.create({
+                  data: {
+                    userId: user.id,
+                    competitionId: competition.id,
+                    roundId: currentRound.id,
+                    livesRemaining: competition.livesPerRound,
+                  }
+                })
+                console.log("AUTH_DEBUG", { step: "create_entry", userId: user.id })
+              }
             }
           }
-        }
-        
-        // Return user with proper type casting
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name || userInfo.name,
-          image: user.image
+
+          // Return user with proper type casting
+          const result = {
+            id: user.id,
+            email: user.email,
+            name: user.name || userInfo.name,
+            image: user.image
+          }
+          console.log("AUTH_DEBUG", { step: "success", resultSeen: Boolean(result?.id) })
+          return result
+        } catch (error) {
+          console.error("AUTH_DEBUG_ERROR", String(error))
+          return null
         }
       }
     })
