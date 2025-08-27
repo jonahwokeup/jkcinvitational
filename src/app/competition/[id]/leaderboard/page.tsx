@@ -50,12 +50,13 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     notFound()
   }
 
-  // Calculate gameweeks survived for each entry
+  // Calculate gameweeks survived for each entry (only count settled gameweeks)
   const entriesWithStats = competition.entries.map(entry => {
-    const uniqueGameweeks = new Set(entry.picks.map(pick => pick.gameweek.gameweekNumber));
+    const settledPicks = entry.picks.filter(pick => pick.gameweek.isSettled);
+    const uniqueSettledGameweeks = new Set(settledPicks.map(pick => pick.gameweek.gameweekNumber));
     return {
       ...entry,
-      calculatedGwsSurvived: uniqueGameweeks.size
+      calculatedGwsSurvived: uniqueSettledGameweeks.size
     };
   });
 
