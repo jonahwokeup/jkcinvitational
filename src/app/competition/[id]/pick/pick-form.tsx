@@ -14,9 +14,14 @@ interface PickFormProps {
   usedTeams: string[]
   isLocked: boolean
   gameweekId: string
+  currentPick?: {
+    team: string
+    fixtureId: string
+    id: string
+  }
 }
 
-export default function PickForm({ fixtures, usedTeams, isLocked, gameweekId }: PickFormProps) {
+export default function PickForm({ fixtures, usedTeams, isLocked, gameweekId, currentPick }: PickFormProps) {
   const [selectedFixture, setSelectedFixture] = useState<string>("")
   const [selectedTeam, setSelectedTeam] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -30,6 +35,9 @@ export default function PickForm({ fixtures, usedTeams, isLocked, gameweekId }: 
     const formData = new FormData()
     formData.append("fixtureId", selectedFixture)
     formData.append("team", selectedTeam)
+    if (currentPick) {
+      formData.append("pickId", currentPick.id)
+    }
     
     const result = await createPick(formData)
     
@@ -50,7 +58,9 @@ export default function PickForm({ fixtures, usedTeams, isLocked, gameweekId }: 
         {fixtures.map((fixture) => {
           const homeTeamUsed = usedTeams.includes(fixture.homeTeam)
           const awayTeamUsed = usedTeams.includes(fixture.awayTeam)
-          const hasAvailableTeam = !homeTeamUsed || !awayTeamUsed
+          // If this fixture has the current pick, both teams should be available for changing
+          const isCurrentPickFixture = currentPick && currentPick.fixtureId === fixture.id
+          const hasAvailableTeam = isCurrentPickFixture || !homeTeamUsed || !awayTeamUsed
           const isDisabled = !hasAvailableTeam || isLocked
           const isSelected = selectedFixture === fixture.id
           

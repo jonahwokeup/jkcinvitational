@@ -158,7 +158,10 @@ export default async function PickPage({ params }: PickPageProps) {
     )
   }
 
-  const usedTeams = entry.picks.map((pick: any) => pick.team)
+  // For pick changes, exclude the current gameweek's pick from used teams
+  const usedTeams = entry.picks
+    .filter((pick: any) => pick.gameweekId !== nextGameweek.id)
+    .map((pick: any) => pick.team)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -255,6 +258,11 @@ export default async function PickPage({ params }: PickPageProps) {
               usedTeams={usedTeams}
               isLocked={isLocked}
               gameweekId={nextGameweek.id}
+              currentPick={existingPick ? {
+                team: existingPick.team,
+                fixtureId: existingPick.fixtureId,
+                id: existingPick.id
+              } : undefined}
             />
           </div>
         ) : (
