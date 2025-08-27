@@ -31,20 +31,31 @@ const authOptions = {
       },
       async authorize(credentials) {
         try {
-          console.log("AUTH_DEBUG", { step: "start", code: credentials?.accessCode })
-          if (!credentials?.accessCode) return null
+          console.log("AUTH_DEBUG", { 
+            step: "start", 
+            code: credentials?.accessCode,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV
+          })
+          
+          if (!credentials?.accessCode) {
+            console.log("AUTH_DEBUG", { step: "no_credentials" })
+            return null
+          }
 
           const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
           if (!userInfo) {
-            console.log("AUTH_DEBUG", { step: "code_not_found" })
+            console.log("AUTH_DEBUG", { step: "code_not_found", code: credentials.accessCode })
             return null
           }
+          
+          console.log("AUTH_DEBUG", { step: "code_valid", userInfo })
 
           // Get or create user
           let user = await prisma.user.findUnique({
             where: { email: userInfo.email }
           })
-          console.log("AUTH_DEBUG", { step: "find_user", found: Boolean(user) })
+          console.log("AUTH_DEBUG", { step: "find_user", found: Boolean(user), email: userInfo.email })
 
           if (!user) {
             user = await prisma.user.create({
