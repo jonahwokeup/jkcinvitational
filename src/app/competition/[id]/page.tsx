@@ -7,6 +7,7 @@ import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
+import Image from 'next/image'
 import type { Session } from 'next-auth'
 
 interface CompetitionPageProps {
@@ -66,6 +67,34 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
   const isLocked = nextGameweek ? !isBeforeLock(nextGameweek.fixtures && nextGameweek.fixtures.length > 0 ? nextGameweek.fixtures[0].kickoff : nextGameweek.lockTime) : false
 
   const getUserPlaceholder = (name: string) => {
+    const nameLower = name.toLowerCase()
+    let imageName = ''
+    
+    if (nameLower.includes('chris')) {
+      imageName = 'chris.jpg'
+    } else if (nameLower.includes('abboud')) {
+      imageName = 'abboud.JPG'
+    } else if (nameLower.includes('max')) {
+      imageName = 'max.jpeg'
+    } else if (nameLower.includes('jonah')) {
+      imageName = 'jonah.jpeg'
+    }
+    
+    if (imageName) {
+      return (
+        <div className="w-6 h-6 rounded-full overflow-hidden">
+          <Image
+            src={`/images/${imageName}`}
+            alt={name}
+            width={24}
+            height={24}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )
+    }
+    
+    // Fallback to initials if no custom image found
     const initials = name.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase()
     return (
       <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs flex items-center justify-center font-semibold">
