@@ -2,7 +2,7 @@ import NextAuth from "next-auth"
 import { prisma } from "./prisma"
 import CredentialsProvider from "next-auth/providers/credentials"
 
-// Simple access codes for the 4 users - CACHE BUST v2
+// Simple access codes for the 4 users - CACHE BUST v3
 const ACCESS_CODES = {
   "651890": { email: "jonah@jkc.com", name: "Jonah McGowan" },
   "690077": { email: "max@jkc.com", name: "Max Reid" },
