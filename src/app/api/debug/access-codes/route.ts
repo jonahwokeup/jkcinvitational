@@ -10,7 +10,7 @@ import { type NextRequest } from "next/server"
 // Reuse the ACCESS_CODES from the auth config by importing the file indirectly would cause side-effects.
 // Instead, we duplicate the minimal data by relying on the authorize path side effects being irrelevant.
 // We safely import the file to read the constant.
-import authOptions, { ACCESS_CODE_COUNT } from "@/src/lib/auth"
+import authOptions, { ACCESS_CODE_COUNT } from "@/lib/auth"
 
 export async function GET(_req: NextRequest) {
   noStore()
