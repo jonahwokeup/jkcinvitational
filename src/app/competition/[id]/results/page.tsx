@@ -86,10 +86,6 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
         {/* All Gameweek Results */}
         <div className="space-y-6">
           {competition.gameweeks
-            .filter(gameweek => 
-              gameweek.isSettled || 
-              gameweek.fixtures.some(f => f.status === 'FINISHED')
-            )
             .sort((a, b) => b.gameweekNumber - a.gameweekNumber) // Show most recent GW first
             .map(gameweek => (
               <div key={gameweek.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -190,10 +186,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
               </div>
             ))}
           
-          {competition.gameweeks.filter(gameweek => 
-            gameweek.isSettled || 
-            gameweek.fixtures.some(f => f.status === 'FINISHED')
-          ).length === 0 && (
+          {competition.gameweeks.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <p className="text-gray-500">No active gameweeks available yet.</p>
             </div>

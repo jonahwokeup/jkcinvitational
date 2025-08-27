@@ -26,17 +26,18 @@ async function updateGW2Results() {
       console.log(`   ${fixture.homeTeam} v ${fixture.awayTeam} - ${fixture.status}`);
     });
 
-    // GW2 Results (excluding Newcastle vs Liverpool which is still outstanding)
+    // Correct, settled GW2 results
     const GW2_RESULTS = [
-      { homeTeam: 'West Ham United', awayTeam: 'Chelsea', homeGoals: 2, awayGoals: 1 },
-      { homeTeam: 'Manchester City', awayTeam: 'Tottenham Hotspur', homeGoals: 3, awayGoals: 1 },
-      { homeTeam: 'Bournemouth', awayTeam: 'Wolverhampton Wanderers', homeGoals: 1, awayGoals: 1 },
-      { homeTeam: 'Brentford', awayTeam: 'Aston Villa', homeGoals: 0, awayGoals: 2 },
-      { homeTeam: 'Burnley', awayTeam: 'Sunderland', homeGoals: 1, awayGoals: 2 },
-      { homeTeam: 'Arsenal', awayTeam: 'Leeds United', homeGoals: 2, awayGoals: 0 },
+      { homeTeam: 'West Ham United', awayTeam: 'Chelsea', homeGoals: 1, awayGoals: 5 },
+      { homeTeam: 'Manchester City', awayTeam: 'Tottenham Hotspur', homeGoals: 0, awayGoals: 2 },
+      { homeTeam: 'Bournemouth', awayTeam: 'Wolverhampton Wanderers', homeGoals: 1, awayGoals: 0 },
+      { homeTeam: 'Brentford', awayTeam: 'Aston Villa', homeGoals: 1, awayGoals: 0 },
+      { homeTeam: 'Burnley', awayTeam: 'Sunderland', homeGoals: 2, awayGoals: 0 },
+      { homeTeam: 'Arsenal', awayTeam: 'Leeds United', homeGoals: 5, awayGoals: 0 },
       { homeTeam: 'Crystal Palace', awayTeam: 'Nottingham Forest', homeGoals: 1, awayGoals: 1 },
-      { homeTeam: 'Everton', awayTeam: 'Brighton & Hove Albion', homeGoals: 0, awayGoals: 1 },
-      { homeTeam: 'Fulham', awayTeam: 'Manchester United', homeGoals: 1, awayGoals: 2 }
+      { homeTeam: 'Everton', awayTeam: 'Brighton & Hove Albion', homeGoals: 2, awayGoals: 0 },
+      { homeTeam: 'Fulham', awayTeam: 'Manchester United', homeGoals: 1, awayGoals: 1 },
+      { homeTeam: 'Newcastle United', awayTeam: 'Liverpool', homeGoals: 2, awayGoals: 3 },
     ];
 
     console.log('\n📝 Updating GW2 results...');
@@ -67,27 +68,9 @@ async function updateGW2Results() {
       }
     }
 
-    // Check Newcastle vs Liverpool (still outstanding)
-    const newcastleLiverpool = await prisma.fixture.findFirst({
-      where: {
-        gameweekId: gameweek2.id,
-        OR: [
-          { homeTeam: 'Newcastle United', awayTeam: 'Liverpool' },
-          { homeTeam: 'Liverpool', awayTeam: 'Newcastle United' }
-        ]
-      }
-    });
-
-    if (newcastleLiverpool) {
-      console.log(`\n⏳ Newcastle vs Liverpool fixture found but not updated (still outstanding)`);
-      console.log(`   Fixture ID: ${newcastleLiverpool.id}`);
-      console.log(`   Current status: ${newcastleLiverpool.status}`);
-    }
-
     console.log(`\n🎯 Summary:`);
     console.log(`   Total fixtures in GW2: ${gameweek2.fixtures.length}`);
     console.log(`   Results updated: ${updatedCount}`);
-    console.log(`   Outstanding: 1 (Newcastle vs Liverpool)`);
 
     // Mark gameweek as settled if all fixtures are finished
     const unfinishedFixtures = await prisma.fixture.count({
