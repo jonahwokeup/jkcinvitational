@@ -3,7 +3,7 @@ import authOptions from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { formatDate } from '@/lib/utils'
+import { formatDate, isBeforeLock } from '@/lib/utils'
 import TeamCrest from '@/components/team-crest'
 import type { Session } from 'next-auth'
 
@@ -162,7 +162,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           <div className="text-sm text-gray-600">
                             {formatDate(fixture.kickoff, "PPp")}
                           </div>
-                          {fixture.picks.length > 0 && (
+                          {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime)) && fixture.picks.length > 0 && (
                             <div className="mt-2">
                               <div className="text-xs text-gray-500 mb-1">Picks:</div>
                               {fixture.picks.map(pick => (
