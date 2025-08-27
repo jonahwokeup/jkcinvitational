@@ -63,6 +63,17 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
   const aliveEntries = currentRound?.entries.filter((entry: any) => entry.livesRemaining > 0) || []
   const eliminatedEntries = currentRound?.entries.filter((entry: any) => entry.livesRemaining <= 0) || []
 
+  const isLocked = nextGameweek ? !isBeforeLock(nextGameweek.fixtures && nextGameweek.fixtures.length > 0 ? nextGameweek.fixtures[0].kickoff : nextGameweek.lockTime) : false
+
+  const getUserPlaceholder = (name: string) => {
+    const initials = name.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase()
+    return (
+      <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs flex items-center justify-center font-semibold">
+        {initials}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -168,6 +179,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {aliveEntries.map((entry: any) => {
                     const lastPick = entry.picks[entry.picks.length - 1]
+                    const showCrest = isLocked
                     return (
                       <div
                         key={entry.id}
@@ -182,7 +194,11 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           </p>
                           {lastPick && (
                             <div className="mt-1">
-                              <TeamCrest teamName={lastPick.team} size="sm" />
+                              {showCrest ? (
+                                <TeamCrest teamName={lastPick.team} size="sm" />
+                              ) : (
+                                getUserPlaceholder(entry.user.name || entry.user.email)
+                              )}
                             </div>
                           )}
                         </div>
