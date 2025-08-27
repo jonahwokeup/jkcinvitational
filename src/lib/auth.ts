@@ -10,6 +10,9 @@ const ACCESS_CODES = {
   "247324": { email: "chris@jkc.com", name: "Chris Grube" },
 }
 
+// Export only the count for diagnostics; do not expose the codes
+export const ACCESS_CODE_COUNT = Object.keys(ACCESS_CODES).length
+
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   url: process.env.NEXTAUTH_URL,
