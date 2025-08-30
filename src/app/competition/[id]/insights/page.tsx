@@ -99,8 +99,15 @@ export default async function InsightsPage({ params }: PageProps) {
     }))
     .sort((a, b) => b.usage - a.usage);
 
-  // For position tracking: include ALL gameweeks (including current ones) to show real-time positions
-  const leaderboardHistory = competition.gameweeks.map((gameweek) => {
+  // For position tracking: include SETTLED gameweeks + CURRENT gameweek (no scheduled ones)
+  // This ensures we show GW1, GW2 (settled) + GW3 (current in-progress) but not GW4+ (scheduled)
+  const currentGameweek = competition.gameweeks.find(gw => !gw.isSettled);
+  const gameweeksToShow = [
+    ...competition.gameweeks.filter(gw => gw.isSettled),
+    ...(currentGameweek ? [currentGameweek] : [])
+  ].sort((a, b) => a.gameweekNumber - b.gameweekNumber);
+
+  const leaderboardHistory = gameweeksToShow.map((gameweek) => {
     const gameweekEntries = competition.entries.map((entry) => {
       const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
       const gameweekWins = gameweekPicks.filter(pick => {
@@ -130,15 +137,20 @@ export default async function InsightsPage({ params }: PageProps) {
     // Handle ties
     const positions = gameweekEntries.map((entry, index) => {
       let position = index + 1;
+
       if (index > 0) {
         const prevEntry = gameweekEntries[index - 1];
         if (prevEntry.gwsSurvived === entry.gwsSurvived &&
             prevEntry.roundWins === entry.roundWins) {
-          position = gameweekEntries.findIndex(e =>
-            e.gwsSurvived === entry.gwsSurvived && e.roundWins === entry.roundWins
-          ) + 1;
+          // Find the first entry with these same stats
+          const firstIndex = gameweekEntries.findIndex(e =>
+            e.gwsSurvived === entry.gwsSurvived &&
+            e.roundWins === entry.roundWins
+          );
+          position = firstIndex + 1;
         }
       }
+
       return { ...entry, position };
     });
 
@@ -154,6 +166,15 @@ export default async function InsightsPage({ params }: PageProps) {
       name: p.user.name, 
       image: p.user.image,
       hasImage: !!p.user.image 
+    }))
+  );
+  
+  // Debug: show which gameweeks are being displayed
+  console.log("Debug: Gameweeks being displayed:", 
+    gameweeksToShow.map(gw => ({
+      number: gw.gameweekNumber,
+      settled: gw.isSettled,
+      status: gw.isSettled ? 'SETTLED' : 'CURRENT'
     }))
   );
 
