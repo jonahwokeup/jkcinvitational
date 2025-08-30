@@ -412,7 +412,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
             href={`/competition/${competition.id}/insights`}
             className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
           >
-            <div className="w-8 h-8 text-indigo-600 mx-auto mb-2 flex items-center justify-center">
+            <div className="w-8 h-8 text-purple-600 mx-auto mb-2 flex items-center justify-center">
               📊
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Insights</h3>

@@ -22,14 +22,22 @@ export default function TeamUsageRow({ teamStat, competitionId }: TeamUsageRowPr
   const [isLoading, setIsLoading] = useState(false);
 
   const handleToggle = async () => {
+    console.log("Team row clicked:", teamStat.team, "Current expanded state:", isExpanded);
+    
     if (!isExpanded && pickDetails.length === 0) {
       setIsLoading(true);
       try {
+        console.log("Fetching pick details for team:", teamStat.team);
         // Fetch detailed pick information for this team
         const response = await fetch(`/api/competition/${competitionId}/team-picks?team=${encodeURIComponent(teamStat.team)}`);
+        console.log("API response status:", response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log("API response data:", data);
           setPickDetails(data.picks || []);
+        } else {
+          console.error("API response not ok:", response.status, response.statusText);
         }
       } catch (error) {
         console.error("Failed to fetch pick details:", error);
@@ -37,7 +45,10 @@ export default function TeamUsageRow({ teamStat, competitionId }: TeamUsageRowPr
         setIsLoading(false);
       }
     }
-    setIsExpanded(!isExpanded);
+    
+    const newExpandedState = !isExpanded;
+    console.log("Setting expanded state to:", newExpandedState);
+    setIsExpanded(newExpandedState);
   };
 
   const getRoundEmoji = (roundNumber: number) => {

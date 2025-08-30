@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 // Dynamically import Chart.js components to avoid SSR issues
 const PositionTrackingChart = dynamic(() => import("@/components/position-tracking-chart"), {
@@ -45,6 +47,17 @@ export default function InsightsClient({
 }: InsightsClientProps) {
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Back Button */}
+      <div className="mb-6">
+        <Link
+          href={`/competition/${competition.id}`}
+          className="inline-flex items-center space-x-2 text-purple-600 hover:text-purple-700 font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Competition</span>
+        </Link>
+      </div>
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           {competition.name} - Insights
