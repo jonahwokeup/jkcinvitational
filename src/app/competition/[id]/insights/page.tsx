@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import InsightsClient from "./insights-client";
 
 // Updated to show current gameweeks and fix user image display
+// Latest update: Added fixture results to team expansion details
 
 interface PageProps {
   params: Promise<{
