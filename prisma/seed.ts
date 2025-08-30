@@ -95,13 +95,7 @@ async function main() {
     },
   })
 
-  // Create Round 1
-  const round1 = await prisma.round.create({
-    data: {
-      roundNumber: 1,
-      competitionId: competition.id,
-    },
-  })
+
 
   // Create test users
   const users = await Promise.all([
@@ -131,14 +125,13 @@ async function main() {
     })
   ])
 
-  // Create entries for Round 1
+  // Create entries for the competition
   await Promise.all(
     users.map(user =>
       prisma.entry.create({
         data: {
           userId: user.id,
           competitionId: competition.id,
-          roundId: round1.id,
           livesRemaining: 1,
         },
       })
