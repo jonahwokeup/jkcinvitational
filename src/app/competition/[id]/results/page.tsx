@@ -5,6 +5,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, isBeforeLock } from '@/lib/utils'
 import TeamCrest from '@/components/team-crest'
+import ResultsNavigation from '@/components/results-navigation'
 import type { Session } from 'next-auth'
 
 interface ResultsPageProps {
@@ -65,16 +66,20 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
   //   redirect(`/competition/${competition.id}`)
   // }
 
-  // Order: settled (or in-progress) first, newest to oldest; then purely scheduled GWs ascending
-  const settledFirst = competition.gameweeks
+  // Order: current (in-progress) first, then settled (newest to oldest), then scheduled (ascending)
+  const currentFirst = competition.gameweeks
+    .filter(gw => !gw.isSettled && gw.fixtures.some(f => new Date(f.kickoff) < new Date()))
+    .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
+
+  const settledLater = competition.gameweeks
     .filter(gw => gw.isSettled || gw.fixtures.some(f => f.status === 'FINISHED'))
     .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
 
-  const scheduledLater = competition.gameweeks
-    .filter(gw => !gw.isSettled && gw.fixtures.every(f => f.status === 'SCHEDULED'))
+  const scheduledLast = competition.gameweeks
+    .filter(gw => !gw.isSettled && gw.fixtures.every(f => new Date(f.kickoff) >= new Date()))
     .sort((a, b) => a.gameweekNumber - b.gameweekNumber)
 
-  const orderedGameweeks = [...settledFirst, ...scheduledLater]
+  const orderedGameweeks = [...currentFirst, ...settledLater, ...scheduledLast]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,13 +100,32 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
           </div>
         </div>
 
+        {/* Navigation Bar */}
+        <ResultsNavigation 
+          hasCurrent={currentFirst.length > 0}
+          hasSettled={settledLater.length > 0}
+          hasScheduled={scheduledLast.length > 0}
+        />
+
         {/* All Gameweek Results */}
         <div className="space-y-6">
           {orderedGameweeks
-            .map(gameweek => (
-              <div key={gameweek.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            .map(gameweek => {
+              // Determine the gameweek type for navigation
+              const gameweekType = gameweek.isSettled ? 'settled' : 
+                gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'settled' :
+                gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'current' : 'scheduled';
+              
+              return (
+                <div 
+                  key={gameweek.id} 
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                  data-gameweek-type={gameweekType}
+                >
                 <div className={`px-6 py-4 border-b border-gray-200 ${
-                  gameweek.isSettled ? 'bg-green-50' : gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'bg-blue-50' : 'bg-gray-50'
+                  gameweek.isSettled ? 'bg-green-50' : 
+                  gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'bg-blue-50' :
+                  gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'bg-yellow-50' : 'bg-gray-50'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
@@ -111,20 +135,28 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                       <p className="text-sm text-gray-600">
                         {gameweek.isSettled 
                           ? `Settled on ${formatDate(gameweek.settledAt!, "PPp")}`
-                          : `Status: ${gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 'Scheduled'}`
+                          : gameweek.fixtures.some(f => f.status === 'FINISHED') 
+                            ? 'In Progress'
+                            : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
+                              ? 'Current - Picks Locked'
+                              : 'Scheduled'
                         }
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        gameweek.isSettled 
-                          ? 'bg-green-100 text-green-800' 
-                          : gameweek.fixtures.some(f => f.status === 'FINISHED')
-                          ? 'bg-blue-100 text-blue-800'
+                                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                      gameweek.isSettled 
+                        ? 'bg-green-100 text-green-800' 
+                        : gameweek.fixtures.some(f => f.status === 'FINISHED')
+                        ? 'bg-blue-100 text-blue-800'
+                        : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
+                          ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {gameweek.isSettled ? 'Completed' : gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 'Scheduled'}
-                      </span>
+                    }`}>
+                      {gameweek.isSettled ? 'Completed' : 
+                       gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 
+                       gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'Current' : 'Scheduled'}
+                    </span>
                     </div>
                   </div>
                 </div>
@@ -162,7 +194,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           <div className="text-sm text-gray-600">
                             {formatDate(fixture.kickoff, "PPp")}
                           </div>
-                          {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime)) && fixture.picks.length > 0 && (
+                          {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime) || gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())) && fixture.picks.length > 0 && (
                             <div className="mt-2">
                               <div className="text-xs text-gray-500 mb-1">Picks:</div>
                               {fixture.picks.map(pick => (
@@ -195,7 +227,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                   ))}
                 </div>
               </div>
-            ))}
+            )})}
           
           {competition.gameweeks.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
