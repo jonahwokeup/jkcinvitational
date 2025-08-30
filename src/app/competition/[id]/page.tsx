@@ -43,9 +43,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
         },
       },
       gameweeks: {
-        where: { lockTime: { gt: new Date() } },
-        orderBy: { lockTime: 'asc' },
-        take: 1,
+        orderBy: { gameweekNumber: 'asc' },
         include: {
           fixtures: {
             orderBy: { kickoff: 'asc' }
@@ -60,11 +58,65 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
   }
 
   const currentRound = competition.rounds[0]
-  const nextGameweek = competition.gameweeks[0]
+  
+  // Debug logging for gameweek detection
+  console.log('🔍 Competition Page Debug:');
+  console.log('  Competition:', competition.name);
+  console.log('  Total gameweeks:', competition.gameweeks.length);
+  
+  competition.gameweeks.forEach(gw => {
+    const lockTimePassed = !isBeforeLock(gw.lockTime);
+    const hasPastFixtures = gw.fixtures && gw.fixtures.some(f => new Date(f.kickoff) < new Date());
+    const hasFutureFixtures = gw.fixtures && gw.fixtures.some(f => new Date(f.kickoff) >= new Date());
+    
+    console.log(`  GW${gw.gameweekNumber}:`);
+    console.log(`    Lock time: ${gw.lockTime}`);
+    console.log(`    Lock time passed: ${lockTimePassed}`);
+    console.log(`    Has past fixtures: ${hasPastFixtures}`);
+    console.log(`    Has future fixtures: ${hasFutureFixtures}`);
+    console.log(`    Is settled: ${gw.isSettled}`);
+    console.log(`    Fixtures count: ${gw.fixtures?.length || 0}`);
+  });
+  
+  // Find gameweeks in different states
+  const scheduledGameweek = competition.gameweeks.find(gw => 
+    isBeforeLock(gw.lockTime) && 
+    !gw.isSettled && 
+    (!gw.fixtures || gw.fixtures.every(fixture => new Date(fixture.kickoff) >= new Date()))
+  )
+  
+  // A gameweek is current if it's not settled and either:
+  // 1. Lock time has passed, OR
+  // 2. Any fixtures have started (kickoff time has passed)
+  const currentGameweek = competition.gameweeks.find(gw => 
+    !gw.isSettled && 
+    (!isBeforeLock(gw.lockTime) || 
+     (gw.fixtures && gw.fixtures.some(fixture => new Date(fixture.kickoff) < new Date())))
+  )
+  
+  console.log('🔍 Gameweek Detection Results:');
+  console.log('  Scheduled gameweek:', scheduledGameweek ? `GW${scheduledGameweek.gameweekNumber}` : 'None');
+  console.log('  Current gameweek:', currentGameweek ? `GW${currentGameweek.gameweekNumber}` : 'None');
+  
+  const settledGameweeks = competition.gameweeks.filter(gw => gw.isSettled)
+  
   const aliveEntries = currentRound?.entries.filter((entry: any) => entry.livesRemaining > 0) || []
   const eliminatedEntries = currentRound?.entries.filter((entry: any) => entry.livesRemaining <= 0) || []
 
-  const isLocked = nextGameweek ? !isBeforeLock(nextGameweek.fixtures && nextGameweek.fixtures.length > 0 ? nextGameweek.fixtures[0].kickoff : nextGameweek.lockTime) : false
+  // A gameweek is "locked" when it's current (in progress) - picks can't be changed
+  // Also check if any fixtures have started (kickoff time has passed)
+  const isLocked = currentGameweek ? true : 
+    competition.gameweeks.some(gw => 
+      !gw.isSettled && 
+      gw.fixtures && 
+      gw.fixtures.some(fixture => 
+        new Date(fixture.kickoff) < new Date()
+      )
+    )
+  
+  console.log('🔍 Lock Status:');
+  console.log('  isLocked:', isLocked);
+  console.log('  showCrest should be:', isLocked);
 
   const getUserPlaceholder = (name: string) => {
     const nameLower = name.toLowerCase()
@@ -137,20 +189,20 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
               </div>
             </div>
 
-            {/* Next Gameweek */}
-            {nextGameweek && (
+            {/* Scheduled Gameweek */}
+            {scheduledGameweek && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-blue-900 mb-1">
-                      Gameweek {nextGameweek.gameweekNumber}
+                      Gameweek {scheduledGameweek.gameweekNumber}
                     </h3>
                     <p className="text-blue-700">
-                      First match starts {formatTimeUntil(nextGameweek.fixtures && nextGameweek.fixtures.length > 0 ? nextGameweek.fixtures[0].kickoff : nextGameweek.lockTime)}
+                      First match starts {formatTimeUntil(scheduledGameweek.fixtures && scheduledGameweek.fixtures.length > 0 ? scheduledGameweek.fixtures[0].kickoff : scheduledGameweek.lockTime)}
                     </p>
                   </div>
                   <div className="text-right">
-                    {isBeforeLock(nextGameweek.fixtures && nextGameweek.fixtures.length > 0 ? nextGameweek.fixtures[0].kickoff : nextGameweek.lockTime) ? (
+                    {isBeforeLock(scheduledGameweek.fixtures && scheduledGameweek.fixtures.length > 0 ? scheduledGameweek.fixtures[0].kickoff : scheduledGameweek.lockTime) ? (
                       <Link
                         href={`/competition/${competition.id}/pick`}
                         className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
@@ -167,20 +219,41 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
               </div>
             )}
 
+            {/* Current Gameweek */}
+            {currentGameweek && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-900 mb-1">
+                      Gameweek {currentGameweek.gameweekNumber} - In Progress
+                    </h3>
+                    <p className="text-green-700">
+                      Picks are locked - matches are underway
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-green-600 font-medium">
+                      🔒 Picks Locked
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* User's Current Pick */}
-            {nextGameweek && (
+            {scheduledGameweek && (
               (() => {
                 const userEntry = aliveEntries.find((entry: any) => entry.user.id === session.user!.id)
                 if (!userEntry) return null
                 
-                const currentPick = userEntry.picks.find((pick: any) => pick.gameweekId === nextGameweek.id)
+                const currentPick = userEntry.picks.find((pick: any) => pick.gameweekId === scheduledGameweek.id)
                 if (!currentPick) return null
                 
                 return (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                     <h3 className="text-lg font-semibold text-green-900 mb-2 flex items-center">
                       <Target className="w-5 h-5 mr-2" />
-                      Your Pick for Gameweek {nextGameweek.gameweekNumber}
+                      Your Pick for Gameweek {scheduledGameweek.gameweekNumber}
                     </h3>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -189,7 +262,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           (vs {currentPick.fixture?.homeTeam === currentPick.team ? currentPick.fixture?.awayTeam : currentPick.fixture?.homeTeam})
                         </span>
                       </div>
-                      {isBeforeLock(nextGameweek.lockTime) && (
+                      {isBeforeLock(scheduledGameweek.lockTime) && (
                         <Link
                           href={`/competition/${competition.id}/pick`}
                           className="text-sm text-green-700 hover:text-green-900 underline"
@@ -214,6 +287,14 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                   {aliveEntries.map((entry: any) => {
                     const lastPick = entry.picks[entry.picks.length - 1]
                     const showCrest = isLocked
+                    
+                    // Find the pick for the current locked gameweek
+                    const currentGameweekPick = currentGameweek ? 
+                      entry.picks.find((pick: any) => pick.gameweekId === currentGameweek.id) : null
+                    
+                    // Show team crest for current gameweek pick if locked, otherwise show last pick
+                    const pickToShow = showCrest && currentGameweekPick ? currentGameweekPick : lastPick
+                    
                     return (
                       <div
                         key={entry.id}
@@ -226,10 +307,10 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           <p className="text-sm text-green-700">
                             {entry.picks.length} picks made
                           </p>
-                          {lastPick && (
+                          {pickToShow && (
                             <div className="mt-1">
                               {showCrest ? (
-                                <TeamCrest teamName={lastPick.team} size="sm" />
+                                <TeamCrest teamName={pickToShow.team} size="sm" />
                               ) : (
                                 getUserPlaceholder(entry.user.name || entry.user.email)
                               )}
@@ -259,6 +340,14 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {eliminatedEntries.map((entry: any) => {
                     const lastPick = entry.picks[entry.picks.length - 1]
+                    
+                    // Find the pick for the current locked gameweek
+                    const currentGameweekPick = currentGameweek ? 
+                      entry.picks.find((pick: any) => pick.gameweekId === currentGameweek.id) : null
+                    
+                    // Show team crest for current gameweek pick if locked, otherwise show last pick
+                    const pickToShow = isLocked && currentGameweekPick ? currentGameweekPick : lastPick
+                    
                     return (
                       <div
                         key={entry.id}
@@ -271,9 +360,9 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           <p className="text-sm text-red-700">
                             Eliminated GW {entry.eliminatedAtGw}
                           </p>
-                          {lastPick && (
+                          {pickToShow && (
                             <div className="mt-1">
-                              <TeamCrest teamName={lastPick.team} size="sm" />
+                              <TeamCrest teamName={pickToShow.team} size="sm" />
                             </div>
                           )}
                         </div>
