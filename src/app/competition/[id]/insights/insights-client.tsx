@@ -94,7 +94,7 @@ export default function InsightsClient({ competition, teamStatsArray, leaderboar
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Leaderboard Position Tracking</h2>
-              <p className="text-sm text-gray-600 mt-1">Visual tracking of how each player's position changed throughout the season</p>
+              <p className="text-sm text-gray-600 mt-1">Visual tracking of how each player&apos;s position changed throughout the season</p>
             </div>
             <div className="p-6">
               <PositionTrackingChart data={leaderboardHistory} />
