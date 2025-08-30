@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import InsightsClient from "./insights-client";
 
+// Updated to show current gameweeks and fix user image display
+// Latest update: Added fixture results to team expansion details
+
 interface PageProps {
   params: Promise<{
     id: string;
@@ -52,10 +55,20 @@ export default async function InsightsPage({ params }: PageProps) {
     notFound();
   }
 
-  // Calculate team usage and success rates
+  // For team usage stats: only include picks from SETTLED gameweeks to prevent revealing current picks
+  const settledGameweeks = competition.gameweeks.filter(gw => gw.isSettled);
+  const settledGameweekIds = new Set(settledGameweeks.map(gw => gw.id));
+
+  // Filter entries to only include picks from settled gameweeks for team stats
+  const entriesWithSettledPicks = competition.entries.map(entry => ({
+    ...entry,
+    picks: entry.picks.filter(pick => settledGameweekIds.has(pick.gameweekId))
+  }));
+
+  // Calculate team usage and success rates (only from settled gameweeks)
   const teamStats = new Map<string, { usage: number; wins: number; totalPicks: number }>();
 
-  competition.entries.forEach((entry) => {
+  entriesWithSettledPicks.forEach((entry) => {
     entry.picks.forEach((pick) => {
       const team = pick.team;
       const fixture = pick.fixture;
@@ -85,56 +98,63 @@ export default async function InsightsPage({ params }: PageProps) {
     }))
     .sort((a, b) => b.usage - a.usage);
 
-  // Calculate leaderboard positions over time
-  const leaderboardHistory = competition.gameweeks
-    .filter(gw => gw.isSettled)
-    .map((gameweek) => {
-      const gameweekEntries = competition.entries.map((entry) => {
-        const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
-        const gameweekWins = gameweekPicks.filter(pick => {
-          const fixture = pick.fixture;
-          if (fixture.status !== "FINISHED") return false;
-          return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
-                 (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
-        }).length;
-
-        return {
-          userId: entry.userId,
-          user: entry.user,
-          gameweekNumber: gameweek.gameweekNumber,
-          survived: gameweekWins > 0,
-          gwsSurvived: entry.seasonGwsSurvived,
-          roundWins: entry.seasonRoundWins,
-        };
-      });
-
-      // Sort by GWs survived, then by round wins, then by creation time
-      gameweekEntries.sort((a, b) => {
-        if (b.gwsSurvived !== a.gwsSurvived) return b.gwsSurvived - a.gwsSurvived;
-        if (b.roundWins !== a.roundWins) return b.roundWins - a.roundWins;
-        return new Date(a.user.createdAt).getTime() - new Date(b.user.createdAt).getTime();
-      });
-
-      // Handle ties
-      const positions = gameweekEntries.map((entry, index) => {
-        let position = index + 1;
-        if (index > 0) {
-          const prevEntry = gameweekEntries[index - 1];
-          if (prevEntry.gwsSurvived === entry.gwsSurvived &&
-              prevEntry.roundWins === entry.roundWins) {
-            position = gameweekEntries.findIndex(e =>
-              e.gwsSurvived === entry.gwsSurvived && e.roundWins === entry.roundWins
-            ) + 1;
-          }
-        }
-        return { ...entry, position };
-      });
+  // For position tracking: include ALL gameweeks (including current ones) to show real-time positions
+  const leaderboardHistory = competition.gameweeks.map((gameweek) => {
+    const gameweekEntries = competition.entries.map((entry) => {
+      const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
+      const gameweekWins = gameweekPicks.filter(pick => {
+        const fixture = pick.fixture;
+        if (fixture.status !== "FINISHED") return false;
+        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+      }).length;
 
       return {
+        userId: entry.userId,
+        user: entry.user,
         gameweekNumber: gameweek.gameweekNumber,
-        positions,
+        survived: gameweekWins > 0,
+        gwsSurvived: entry.seasonGwsSurvived,
+        roundWins: entry.seasonRoundWins,
       };
     });
+
+    // Sort by GWs survived, then by round wins, then by creation time
+    gameweekEntries.sort((a, b) => {
+      if (b.gwsSurvived !== a.gwsSurvived) return b.gwsSurvived - a.gwsSurvived;
+      if (b.roundWins !== a.roundWins) return b.roundWins - a.roundWins;
+      return new Date(a.user.createdAt).getTime() - new Date(b.user.createdAt).getTime();
+    });
+
+    // Handle ties
+    const positions = gameweekEntries.map((entry, index) => {
+      let position = index + 1;
+      if (index > 0) {
+        const prevEntry = gameweekEntries[index - 1];
+        if (prevEntry.gwsSurvived === entry.gwsSurvived &&
+            prevEntry.roundWins === entry.roundWins) {
+          position = gameweekEntries.findIndex(e =>
+            e.gwsSurvived === entry.gwsSurvived && e.roundWins === entry.roundWins
+          ) + 1;
+        }
+      }
+      return { ...entry, position };
+    });
+
+    return {
+      gameweekNumber: gameweek.gameweekNumber,
+      positions,
+    };
+  });
+
+  // Debug: log user data to see what we're getting
+  console.log("Debug: User data in leaderboard history:", 
+    leaderboardHistory[0]?.positions.map(p => ({ 
+      name: p.user.name, 
+      image: p.user.image,
+      hasImage: !!p.user.image 
+    }))
+  );
 
   return (
     <InsightsClient

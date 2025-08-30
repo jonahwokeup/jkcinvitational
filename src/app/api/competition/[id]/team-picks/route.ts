@@ -17,11 +17,15 @@ export async function GET(
       );
     }
 
+    // Only get picks from SETTLED gameweeks to prevent revealing current picks
     const picks = await prisma.pick.findMany({
       where: {
         team: team,
         entry: {
           competitionId: id,
+        },
+        gameweek: {
+          isSettled: true, // Only include picks from settled gameweeks
         },
       },
       include: {
@@ -44,7 +48,7 @@ export async function GET(
     const picksWithResults = picks.map((pick) => {
       let result = "PENDING";
       if (pick.fixture.status === "FINISHED") {
-        const isWin =
+        const isWin = 
           (pick.team === pick.fixture.homeTeam && pick.fixture.homeGoals! > pick.fixture.awayGoals!) ||
           (pick.team === pick.fixture.awayTeam && pick.fixture.awayGoals! > pick.fixture.homeGoals!);
         result = isWin ? "WIN" : "LOSS";

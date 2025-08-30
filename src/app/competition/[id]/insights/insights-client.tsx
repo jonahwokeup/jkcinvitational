@@ -40,10 +40,10 @@ interface InsightsClientProps {
   leaderboardHistory: GameweekData[];
 }
 
-export default function InsightsClient({
-  competition,
-  teamStatsArray,
-  leaderboardHistory
+export default function InsightsClient({ 
+  competition, 
+  teamStatsArray, 
+  leaderboardHistory 
 }: InsightsClientProps) {
   return (
     <div className="container mx-auto px-4 py-8">
@@ -57,7 +57,7 @@ export default function InsightsClient({
           <span>Back to Competition</span>
         </Link>
       </div>
-
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           {competition.name} - Insights

@@ -16,7 +16,7 @@ export function getUserPlaceholder(name: string | null, image: string | null) {
       />
     );
   }
-
+  
   if (name) {
     return (
       <div className="w-full h-full bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
@@ -24,7 +24,7 @@ export function getUserPlaceholder(name: string | null, image: string | null) {
       </div>
     );
   }
-
+  
   return (
     <div className="w-full h-full bg-gray-400 rounded-full flex items-center justify-center text-white font-medium text-sm">
       ?
