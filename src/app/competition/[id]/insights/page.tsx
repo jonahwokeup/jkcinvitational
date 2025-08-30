@@ -127,14 +127,14 @@ export default async function InsightsPage({ params }: PageProps) {
       };
     });
 
-    // Sort by GWs survived, then by round wins, then by creation time
+    // Sort by GWs survived, then by round wins, then by creation time (earlier entry wins)
     gameweekEntries.sort((a, b) => {
       if (b.gwsSurvived !== a.gwsSurvived) return b.gwsSurvived - a.gwsSurvived;
       if (b.roundWins !== a.roundWins) return b.roundWins - a.roundWins;
       return new Date(a.user.createdAt).getTime() - new Date(b.user.createdAt).getTime();
     });
 
-    // Handle ties
+    // Handle ties - assign same position to players with identical records
     const positions = gameweekEntries.map((entry, index) => {
       let position = index + 1;
 
