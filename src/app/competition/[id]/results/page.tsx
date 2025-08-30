@@ -194,6 +194,24 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           <div className="text-sm text-gray-600">
                             {formatDate(fixture.kickoff, "PPp")}
                           </div>
+                          
+                          {/* Fixture Status Badge */}
+                          <div className="mt-2">
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                              fixture.status === 'FINISHED' 
+                                ? 'bg-green-100 text-green-800' 
+                                : new Date(fixture.kickoff) < new Date()
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {fixture.status === 'FINISHED' 
+                                ? 'Finished' 
+                                : new Date(fixture.kickoff) < new Date()
+                                ? 'In Progress'
+                                : 'Scheduled'}
+                            </span>
+                          </div>
+                          
                           {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime) || gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())) && fixture.picks.length > 0 && (
                             <div className="mt-2">
                               <div className="text-xs text-gray-500 mb-1">Picks:</div>

@@ -1,0 +1,87 @@
+// This is a temporary production schema for running database scripts
+// against the Supabase production database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PRODUCTION_DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  entries   Entry[]
+}
+
+model Competition {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  season      String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  entries     Entry[]
+  gameweeks   Gameweek[]
+}
+
+model Entry {
+  id            String      @id @default(cuid())
+  userId        String
+  competitionId String
+  isEliminated  Boolean     @default(false)
+  eliminatedAt  DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  picks         Pick[]
+}
+
+model Gameweek {
+  id        String   @id @default(cuid())
+  competitionId String
+  gameweekNumber Int
+  lockTime  DateTime
+  isSettled Boolean  @default(false)
+  settledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  fixtures   Fixture[]
+  picks      Pick[]
+}
+
+model Fixture {
+  id          String   @id @default(cuid())
+  gameweekId  String
+  homeTeam    String
+  awayTeam    String
+  kickoff     DateTime
+  status      String   @default("SCHEDULED")
+  homeGoals   Int?
+  awayGoals   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  picks       Pick[]
+}
+
+model Pick {
+  id        String   @id @default(cuid())
+  entryId   String
+  gameweekId String
+  fixtureId String
+  team      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  entry     Entry     @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  gameweek  Gameweek  @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  fixture   Fixture   @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+}

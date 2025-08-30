@@ -503,6 +503,81 @@ export async function enterGameweekResults(formData: FormData) {
   }
 }
 
+export async function updateFixtureResult(
+  fixtureId: string, 
+  homeGoals: number, 
+  awayGoals: number
+) {
+  const session = await getServerSession(authOptions) as null
+  if (!session?.user?.id) {
+    throw new Error("Not authenticated")
+  }
+
+  // Check if user is admin
+  if (session.user.email !== 'jonah@jkc.com') {
+    throw new Error("Not authorized")
+  }
+
+  try {
+    // Get the fixture and its gameweek
+    const fixture = await prisma.fixture.findUnique({
+      where: { id: fixtureId },
+      include: { 
+        gameweek: {
+          include: { fixtures: true }
+        }
+      }
+    })
+
+    if (!fixture) {
+      return { error: "Fixture not found" }
+    }
+
+    if (fixture.gameweek.isSettled) {
+      return { error: "Gameweek is already settled" }
+    }
+
+    // Update the fixture with results
+    await prisma.fixture.update({
+      where: { id: fixtureId },
+      data: {
+        homeGoals,
+        awayGoals,
+        status: 'FINISHED'
+      }
+    })
+
+    // Check if all fixtures in this gameweek now have results
+    const allFixturesFinished = fixture.gameweek.fixtures.every(f => 
+      f.status === 'FINISHED' && f.homeGoals !== null && f.awayGoals !== null
+    )
+
+    if (allFixturesFinished) {
+      // Mark gameweek as settled
+      await prisma.gameweek.update({
+        where: { id: fixture.gameweek.id },
+        data: { 
+          isSettled: true,
+          settledAt: new Date()
+        }
+      })
+
+      // Process picks and eliminate players
+      await processGameweekResults(fixture.gameweek.id)
+    }
+
+    // Revalidate relevant paths
+    revalidatePath(`/competition/${fixture.gameweek.competitionId}/admin`)
+    revalidatePath(`/competition/${fixture.gameweek.competitionId}`)
+    revalidatePath(`/competition/${fixture.gameweek.competitionId}/results`)
+    
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating fixture result:', error)
+    return { error: "Failed to update fixture result" }
+  }
+}
+
 // Process gameweek results and eliminate players
 async function processGameweekResults(gameweekId: string) {
   try {

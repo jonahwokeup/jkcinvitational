@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import authOptions from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import EnterResultsForm from './enter-results-form'
+import RealTimeResultsForm from './real-time-results-form'
 import type { Session } from 'next-auth'
 
 interface EnterResultsPageProps {
@@ -22,13 +23,29 @@ export default async function EnterResultsPage({ params }: EnterResultsPageProps
   }
   
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Enter Gameweek Results</h1>
-        <p className="text-gray-600">Manually enter results for completed gameweeks</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Gameweek Results Management</h1>
+        <p className="text-gray-600">Choose how you want to manage gameweek results</p>
       </div>
       
-      <EnterResultsForm competitionId={competitionId} />
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Real-Time Updates (Recommended)</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Update individual fixture results as matches finish. Perfect for live updates during gameweek.
+          </p>
+          <RealTimeResultsForm competitionId={competitionId} />
+        </div>
+        
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Bulk Entry (Legacy)</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Enter all results at once when the entire gameweek is complete.
+          </p>
+          <EnterResultsForm competitionId={competitionId} />
+        </div>
+      </div>
     </div>
   )
 }
