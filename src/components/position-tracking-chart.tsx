@@ -232,35 +232,41 @@ export default function PositionTrackingChart({ data }: PositionTrackingChartPro
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="relative h-80">
+      {/* Chart Container - Properly contained */}
+      <div className="relative h-80 w-full overflow-hidden">
         <Line data={chartData} options={options} />
-      </div>
-      
-      {/* Custom User Images Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        {data.map((gameweek, gwIndex) => 
-          gameweek.positions.map((entry, posIndex) => {
-            const user = users.find(u => u.id === entry.userId);
-            if (!user) return null;
-            
-            const x = (gwIndex / (data.length - 1)) * 100; // X position as percentage
-            const y = ((entry.position - 1) / (users.length - 1)) * 100; // Y position as percentage
-            
-            return (
-              <div
-                key={`${entry.userId}-${gameweek.gameweekNumber}`}
-                className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                }}
-              >
-                {getUserPlaceholder(user.name || null, user.image || null)}
-              </div>
-            );
-          })
-        )}
+        
+        {/* Custom User Images Overlay - Properly contained within chart area */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {data.map((gameweek, gwIndex) => 
+            gameweek.positions.map((entry, posIndex) => {
+              const user = users.find(u => u.id === entry.userId);
+              if (!user) return null;
+              
+              // Calculate positions relative to chart container, not page
+              const x = (gwIndex / (data.length - 1)) * 100; // X position as percentage
+              const y = ((entry.position - 1) / (users.length - 1)) * 100; // Y position as percentage
+              
+              // Ensure positions are within bounds
+              const clampedX = Math.max(0, Math.min(100, x));
+              const clampedY = Math.max(0, Math.min(100, y));
+              
+              return (
+                <div
+                  key={`${entry.userId}-${gameweek.gameweekNumber}`}
+                  className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
+                  style={{
+                    left: `${clampedX}%`,
+                    top: `${clampedY}%`,
+                    zIndex: 10,
+                  }}
+                >
+                  {getUserPlaceholder(user.name || null, user.image || null)}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

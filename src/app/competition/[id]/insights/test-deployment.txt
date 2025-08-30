@@ -1,4 +1,0 @@
-This is a test file to force Vercel deployment.
-Created at: ${new Date().toISOString()}
-Commit: a6252d1
-Branch: preview
