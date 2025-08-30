@@ -67,8 +67,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
   // }
 
   // Order: current (in-progress) first, then settled (newest to oldest), then scheduled (ascending)
+  // Use a more precise categorization to avoid duplicates
   const currentFirst = competition.gameweeks
-    .filter(gw => !gw.isSettled && gw.fixtures.some(f => new Date(f.kickoff) < new Date()))
+    .filter(gw => !gw.isSettled && gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
     .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
 
   const settledLater = competition.gameweeks
@@ -76,7 +77,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
 
   const scheduledLast = competition.gameweeks
-    .filter(gw => !gw.isSettled && gw.fixtures.every(f => new Date(f.kickoff) >= new Date()))
+    .filter(gw => !gw.isSettled && gw.fixtures.every(f => new Date(f.kickoff) >= new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
     .sort((a, b) => a.gameweekNumber - b.gameweekNumber)
 
   const orderedGameweeks = [...currentFirst, ...settledLater, ...scheduledLast]
