@@ -76,16 +76,32 @@ model Competition {
   
   entries               Entry[]
   gameweeks             Gameweek[]
+  rounds                Round[]
   
   seasonChampion        Entry?        @relation("SeasonChampion", fields: [seasonChampionEntryId], references: [id])
 }
 
-
+model Round {
+  id              String       @id @default(cuid())
+  competitionId   String
+  roundNumber     Int
+  winnerEntryId   String?
+  endedAt         DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  competition     Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  entries         Entry[]
+  winner          Entry?       @relation("RoundWinner", fields: [winnerEntryId], references: [id])
+  
+  @@unique([competitionId, roundNumber])
+}
 
 model Entry {
   id                    String       @id @default(cuid())
   userId                String
   competitionId         String
+  roundId               String?
   livesRemaining        Int          @default(1)
   eliminatedAtGw        Int?
   seasonRoundWins       Int          @default(0)
@@ -97,10 +113,12 @@ model Entry {
   
   user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   competition           Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  round                 Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   picks                 Pick[]
+  wonRounds            Round[]      @relation("RoundWinner")
   seasonChampionOf      Competition[] @relation("SeasonChampion")
   
-  @@unique([userId, competitionId])
+  @@unique([userId, competitionId, roundId])
 }
 
 model Gameweek {
