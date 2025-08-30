@@ -74,6 +74,9 @@ export default function PositionTrackingChart({ data }: PositionTrackingChartPro
     };
   });
 
+  // Debug: log user data to see what images we're getting
+  console.log("Users with images:", users.map(u => ({ name: u.name, image: u.image })));
+
   // Create color palette
   const colors = [
     "#3B82F6", // Blue
@@ -200,7 +203,7 @@ export default function PositionTrackingChart({ data }: PositionTrackingChartPro
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       {/* Custom Legend */}
       <div className="flex flex-wrap gap-4 mb-4 justify-center">
         {users.map((user, index) => (

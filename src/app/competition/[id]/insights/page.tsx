@@ -52,11 +52,11 @@ export default async function InsightsPage({ params }: PageProps) {
     notFound();
   }
 
-  // Only include picks from SETTLED gameweeks to prevent revealing current picks
+  // For team usage stats: only include picks from SETTLED gameweeks to prevent revealing current picks
   const settledGameweeks = competition.gameweeks.filter(gw => gw.isSettled);
   const settledGameweekIds = new Set(settledGameweeks.map(gw => gw.id));
 
-  // Filter entries to only include picks from settled gameweeks
+  // Filter entries to only include picks from settled gameweeks for team stats
   const entriesWithSettledPicks = competition.entries.map(entry => ({
     ...entry,
     picks: entry.picks.filter(pick => settledGameweekIds.has(pick.gameweekId))
@@ -95,9 +95,9 @@ export default async function InsightsPage({ params }: PageProps) {
     }))
     .sort((a, b) => b.usage - a.usage);
 
-  // Calculate leaderboard positions over time (only from settled gameweeks)
-  const leaderboardHistory = settledGameweeks.map((gameweek) => {
-    const gameweekEntries = entriesWithSettledPicks.map((entry) => {
+  // For position tracking: include ALL gameweeks (including current ones) to show real-time positions
+  const leaderboardHistory = competition.gameweeks.map((gameweek) => {
+    const gameweekEntries = competition.entries.map((entry) => {
       const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
       const gameweekWins = gameweekPicks.filter(pick => {
         const fixture = pick.fixture;
@@ -143,6 +143,15 @@ export default async function InsightsPage({ params }: PageProps) {
       positions,
     };
   });
+
+  // Debug: log user data to see what we're getting
+  console.log("Debug: User data in leaderboard history:", 
+    leaderboardHistory[0]?.positions.map(p => ({ 
+      name: p.user.name, 
+      image: p.user.image,
+      hasImage: !!p.user.image 
+    }))
+  );
 
   return (
     <InsightsClient
