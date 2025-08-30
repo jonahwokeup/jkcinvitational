@@ -144,3 +144,4 @@ export default async function InsightsPage({ params }: PageProps) {
     />
   );
 }
+// Trigger deployment
