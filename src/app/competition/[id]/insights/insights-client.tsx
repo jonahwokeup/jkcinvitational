@@ -1,120 +1,105 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import React from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
-// Dynamically import Chart.js components to avoid SSR issues
+// Dynamic imports for chart components
 const PositionTrackingChart = dynamic(() => import("@/components/position-tracking-chart"), {
   ssr: false,
-  loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />
+  loading: () => <div className="animate-pulse bg-gray-200 h-80 rounded-lg" />
 });
 
 const TeamUsageRow = dynamic(() => import("@/components/team-usage-row"), {
   ssr: false,
-  loading: () => <div className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 rounded" />
 });
 
-interface Competition {
-  id: string;
-  name: string;
-  season: string;
-}
-
-interface TeamStat {
-  team: string;
-  usage: number;
-  wins: number;
-  totalPicks: number;
-  successRate: number;
-}
-
-interface GameweekData {
-  gameweekNumber: number;
-  positions: any[];
-}
-
 interface InsightsClientProps {
-  competition: Competition;
-  teamStatsArray: TeamStat[];
-  leaderboardHistory: GameweekData[];
+  competition: any;
+  teamStatsArray: any[];
+  leaderboardHistory: any[];
 }
 
-export default function InsightsClient({ 
-  competition, 
-  teamStatsArray, 
-  leaderboardHistory 
-}: InsightsClientProps) {
+export default function InsightsClient({ competition, teamStatsArray, leaderboardHistory }: InsightsClientProps) {
+  const router = useRouter();
+
+  const handleRefresh = () => {
+    router.refresh();
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Back Button */}
-      <div className="mb-6">
-        <Link
-          href={`/competition/${competition.id}`}
-          className="inline-flex items-center space-x-2 text-purple-600 hover:text-purple-700 font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Competition</span>
-        </Link>
-      </div>
-      
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {competition.name} - Insights
-        </h1>
-        <p className="text-gray-600">
-          Detailed statistics and analysis for the {competition.season} season
-        </p>
-      </div>
-
-      {/* Team Usage & Success Rates */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-          Team Usage & Success Rates
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Team
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Times Picked
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Wins
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Success Rate
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {teamStatsArray.map((teamStat) => (
-                <TeamUsageRow
-                  key={teamStat.team}
-                  teamStat={teamStat}
-                  competitionId={competition.id}
-                />
-              ))}
-            </tbody>
-          </table>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link
+                href={`/competition/${competition.id}`}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span>Back</span>
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Insights</h1>
+                <p className="text-gray-600">{competition.name} - {competition.season}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Leaderboard Position Tracking */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-            Leaderboard Position Tracking
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Visual tracking of how each player&apos;s position changed throughout the season
-          </p>
-        </div>
-        <div className="h-96">
-          <PositionTrackingChart data={leaderboardHistory} />
+        {/* Content */}
+        <div className="space-y-8">
+          {/* Team Usage & Success Rates */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Team Usage & Success Rates</h2>
+              <p className="text-sm text-gray-600 mt-1">Click on a team to see detailed pick history</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Times Picked</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wins</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {teamStatsArray.map((teamStat) => (
+                    <TeamUsageRow
+                      key={teamStat.team}
+                      teamStat={teamStat}
+                      competitionId={competition.id}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Leaderboard Position Tracking */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Leaderboard Position Tracking</h2>
+              <p className="text-sm text-gray-600 mt-1">Visual tracking of how each player's position changed throughout the season</p>
+            </div>
+            <div className="p-6">
+              <PositionTrackingChart data={leaderboardHistory} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

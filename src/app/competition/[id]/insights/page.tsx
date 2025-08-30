@@ -8,6 +8,7 @@ import InsightsClient from "./insights-client";
 // Updated to show current gameweeks and fix user image display
 // Latest update: Added fixture results to team expansion details
 // Force Vercel deployment - testing upgraded plan
+// Real-time updates: Ensure chart mirrors current leaderboard
 
 interface PageProps {
   params: Promise<{
@@ -22,6 +23,7 @@ export default async function InsightsPage({ params }: PageProps) {
     redirect("/auth/signin");
   }
 
+  // Force fresh data fetch - no caching
   const competition = await prisma.competition.findUnique({
     where: { id },
     include: {
@@ -117,7 +119,7 @@ export default async function InsightsPage({ params }: PageProps) {
                (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
       }).length;
 
-      // For current gameweek, calculate real-time stats
+      // For current gameweek, calculate real-time stats based on ALL finished fixtures
       if (!gameweek.isSettled) {
         // Calculate current GWs survived based on all finished gameweeks
         const finishedGameweeks = competition.gameweeks.filter(gw => gw.isSettled);
