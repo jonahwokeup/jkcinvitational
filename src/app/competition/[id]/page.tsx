@@ -380,7 +380,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
         )}
 
         {/* Navigation */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Link
             href={`/competition/${competition.id}/pick`}
             className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
@@ -406,6 +406,17 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
             <Trophy className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Leaderboard</h3>
             <p className="text-gray-600">Season standings and statistics</p>
+          </Link>
+
+          <Link
+            href={`/competition/${competition.id}/insights`}
+            className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
+          >
+            <div className="w-8 h-8 text-indigo-600 mx-auto mb-2 flex items-center justify-center">
+              📊
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Insights</h3>
+            <p className="text-gray-600">Team statistics and position tracking</p>
           </Link>
         </div>
 
