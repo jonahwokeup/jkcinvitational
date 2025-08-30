@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import InsightsClient from "./insights-client";
 
+// Updated to show current gameweeks and fix user image display
+
 interface PageProps {
   params: Promise<{
     id: string;
@@ -161,4 +163,3 @@ export default async function InsightsPage({ params }: PageProps) {
     />
   );
 }
-// Trigger deployment
