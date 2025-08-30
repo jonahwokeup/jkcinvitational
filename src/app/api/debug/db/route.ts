@@ -8,8 +8,9 @@ export async function GET(_req: NextRequest) {
   try {
     const users = await prisma.user.count()
     const competitions = await prisma.competition.count()
-    const rounds = await prisma.round.count()
-    return NextResponse.json({ ok: true, users, competitions, rounds })
+    const gameweeks = await prisma.gameweek.count()
+    const fixtures = await prisma.fixture.count()
+    return NextResponse.json({ ok: true, users, competitions, gameweeks, fixtures })
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: String(error) }, { status: 500 })
   }
