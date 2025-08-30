@@ -508,7 +508,7 @@ export async function updateFixtureResult(
   homeGoals: number, 
   awayGoals: number
 ) {
-  const session = await getServerSession(authOptions) as null
+  const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     throw new Error("Not authenticated")
   }
