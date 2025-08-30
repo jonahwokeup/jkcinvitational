@@ -7,6 +7,7 @@ import InsightsClient from "./insights-client";
 
 // Updated to show current gameweeks and fix user image display
 // Latest update: Added fixture results to team expansion details
+// Force Vercel deployment - testing upgraded plan
 
 interface PageProps {
   params: Promise<{
