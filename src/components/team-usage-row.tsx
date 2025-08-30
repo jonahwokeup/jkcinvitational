@@ -110,15 +110,15 @@ export default function TeamUsageRow({ teamStat, competitionId }: TeamUsageRowPr
                     <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
-                          {pick.user.name?.charAt(0) || "?"}
+                          {pick.entry?.user?.name?.charAt(0) || "?"}
                         </div>
                         <span className="text-sm font-medium text-gray-900">
-                          {pick.user.name}
+                          {pick.entry?.user?.name || "Unknown User"}
                         </span>
                       </div>
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <span>Round {getRoundEmoji(pick.round?.roundNumber || 1)} • GW{pick.gameweek.gameweekNumber} • {formatDate(pick.fixture.kickoff)}</span>
+                        <span>Round {getRoundEmoji(pick.entry?.round?.roundNumber || 1)} • GW{pick.gameweek?.gameweekNumber || "?"} • {formatDate(pick.fixture?.kickoff || new Date().toISOString())}</span>
                       </div>
                       
                       <div className="flex items-center space-x-2">
