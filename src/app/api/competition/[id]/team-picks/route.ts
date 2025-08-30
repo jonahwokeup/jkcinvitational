@@ -17,11 +17,15 @@ export async function GET(
       );
     }
 
+    // Only get picks from SETTLED gameweeks to prevent revealing current picks
     const picks = await prisma.pick.findMany({
       where: {
         team: team,
         entry: {
           competitionId: id,
+        },
+        gameweek: {
+          isSettled: true, // Only include picks from settled gameweeks
         },
       },
       include: {
