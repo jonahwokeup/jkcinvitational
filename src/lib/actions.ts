@@ -43,25 +43,11 @@ export async function joinCompetition(formData: FormData) {
       return { error: "You are already in this competition" }
     }
 
-    // Get the current active round
-    const currentRound = await prisma.round.findFirst({
-      where: { 
-        competitionId: competition.id,
-        endedAt: null 
-      },
-      orderBy: { roundNumber: 'desc' }
-    })
-
-    if (!currentRound) {
-      return { error: "No active round found" }
-    }
-
-    // Create entry for the current round
+    // Create entry for the competition
     await prisma.entry.create({
       data: {
         userId: session.user.id,
         competitionId: competition.id,
-        roundId: currentRound.id,
         livesRemaining: competition.livesPerRound,
       },
     })
@@ -118,7 +104,6 @@ export async function createPick(formData: FormData) {
       where: {
         userId: session.user.id,
         competitionId: fixture.gameweek.competitionId,
-        roundId: { not: null },
       },
       include: { picks: true },
     })
@@ -191,20 +176,12 @@ export async function settleGameweek(gameweekId: string) {
       return { error: "Gameweek already settled" }
     }
 
-    // Get all entries for the current round
-    const currentRound = await prisma.round.findFirst({
+    // Get all entries for the competition
+    const entries = await prisma.entry.findMany({
       where: {
         competitionId: gameweek.competitionId,
-        endedAt: null,
       },
-      include: { entries: true },
     })
-
-    if (!currentRound) {
-      return { error: "No active round found" }
-    }
-
-    const entries = currentRound.entries
     const picks = gameweek.picks
 
     // Process each pick
@@ -234,46 +211,12 @@ export async function settleGameweek(gameweekId: string) {
       }
     }
 
-    // Check if round should end (only one player remaining)
+    // Check if all players are eliminated
     const aliveEntries = entries.filter(entry => entry.livesRemaining > 0)
     
-    if (aliveEntries.length === 1) {
-      // Round winner found
-      const winner = aliveEntries[0]
-      
-      await prisma.round.update({
-        where: { id: currentRound.id },
-        data: {
-          winnerEntryId: winner.id,
-          endedAt: new Date(),
-        },
-      })
-
-      await prisma.entry.update({
-        where: { id: winner.id },
-        data: {
-          seasonRoundWins: { increment: 1 },
-          firstRoundWinAt: winner.firstRoundWinAt || new Date(),
-        },
-      })
-
-      // Start new round
-      const newRound = await prisma.round.create({
-        data: {
-          competitionId: gameweek.competitionId,
-          roundNumber: currentRound.roundNumber + 1,
-        },
-      })
-
-      // Reset all entries for new round
-      await prisma.entry.updateMany({
-        where: { competitionId: gameweek.competitionId },
-        data: {
-          roundId: newRound.id,
-          livesRemaining: gameweek.competition.livesPerRound,
-          eliminatedAtGw: null,
-        },
-      })
+    if (aliveEntries.length === 0) {
+      // All players eliminated in this gameweek
+      console.log("All players eliminated in gameweek", gameweek.gameweekNumber)
     }
 
     // Mark gameweek as settled
