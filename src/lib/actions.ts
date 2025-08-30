@@ -530,7 +530,10 @@ export async function updateFixtureResult(
       where: { id: fixtureId },
       include: { 
         gameweek: {
-          include: { fixtures: true }
+          include: { 
+            fixtures: true,
+            competition: true
+          }
         }
       }
     })
@@ -553,6 +556,9 @@ export async function updateFixtureResult(
       }
     })
 
+    // IMMEDIATELY process picks for this fixture and eliminate players
+    await processFixturePicks(fixtureId, homeGoals, awayGoals)
+
     // Check if all fixtures in this gameweek now have results
     const allFixturesFinished = fixture.gameweek.fixtures.every(f => 
       f.status === 'FINISHED' && f.homeGoals !== null && f.awayGoals !== null
@@ -568,19 +574,65 @@ export async function updateFixtureResult(
         }
       })
 
-      // Process picks and eliminate players
+      // Process any remaining gameweek-level logic
       await processGameweekResults(fixture.gameweek.id)
     }
 
-    // Revalidate relevant paths
+    // Revalidate relevant paths to update leaderboard and results in real-time
     revalidatePath(`/competition/${fixture.gameweek.competitionId}/admin`)
     revalidatePath(`/competition/${fixture.gameweek.competitionId}`)
     revalidatePath(`/competition/${fixture.gameweek.competitionId}/results`)
+    revalidatePath(`/competition/${fixture.gameweek.competitionId}/leaderboard`)
     
     return { success: true }
   } catch (error) {
     console.error('Error updating fixture result:', error)
     return { error: "Failed to update fixture result" }
+  }
+}
+
+// Process picks for a single fixture and eliminate players immediately
+async function processFixturePicks(fixtureId: string, homeGoals: number, awayGoals: number) {
+  try {
+    // Get all picks for this specific fixture
+    const picks = await prisma.pick.findMany({
+      where: { fixtureId },
+      include: {
+        entry: true,
+        fixture: {
+          include: {
+            gameweek: true
+          }
+        }
+      }
+    })
+
+    for (const pick of picks) {
+      // Determine if the picked team won, drew, or lost
+      let result
+      if (pick.team === pick.fixture.homeTeam) {
+        if (homeGoals > awayGoals) result = 'WIN'
+        else if (homeGoals === awayGoals) result = 'DRAW'
+        else result = 'LOSS'
+      } else {
+        if (awayGoals > homeGoals) result = 'WIN'
+        else if (awayGoals === homeGoals) result = 'DRAW'
+        else result = 'LOSS'
+      }
+      
+      // If player lost, eliminate them IMMEDIATELY
+      if (result === 'LOSS') {
+        await prisma.entry.update({
+          where: { id: pick.entry.id },
+          data: {
+            livesRemaining: 0,
+            eliminatedAtGw: pick.fixture.gameweek.gameweekNumber
+          }
+        })
+      }
+    }
+  } catch (error) {
+    console.error('Error processing fixture picks:', error)
   }
 }
 

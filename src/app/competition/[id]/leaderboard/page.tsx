@@ -30,7 +30,8 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
             include: {
               gameweek: true
             }
-          }
+          },
+          round: true
         },
         orderBy: [
           { seasonRoundWins: 'desc' },
@@ -137,6 +138,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     First Win
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Eliminations
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Current Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -211,6 +218,20 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                             ? formatDate(entry.firstRoundWinAt, "MMM d")
                             : '-'
                           }
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="text-sm text-gray-900">
+                          {entry.eliminatedAtGw ? 1 : 0}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
+                          entry.livesRemaining > 0 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {entry.livesRemaining > 0 ? '✅' : '❌'}
                         </span>
                       </td>
                     </tr>
