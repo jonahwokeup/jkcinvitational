@@ -117,6 +117,35 @@ export default async function InsightsPage({ params }: PageProps) {
                (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
       }).length;
 
+      // For current gameweek, calculate real-time stats
+      if (!gameweek.isSettled) {
+        // Calculate current GWs survived based on all finished gameweeks
+        const finishedGameweeks = competition.gameweeks.filter(gw => gw.isSettled);
+        let currentGwsSurvived = 0;
+        
+        finishedGameweeks.forEach(gw => {
+          const gwPicks = entry.picks.filter(pick => pick.gameweekId === gw.id);
+          const gwWins = gwPicks.filter(pick => {
+            const fixture = pick.fixture;
+            if (fixture.status !== "FINISHED") return false;
+            return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+                   (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+          }).length;
+          
+          if (gwWins > 0) currentGwsSurvived++;
+        });
+
+        return {
+          userId: entry.userId,
+          user: entry.user,
+          gameweekNumber: gameweek.gameweekNumber,
+          survived: gameweekWins > 0,
+          gwsSurvived: currentGwsSurvived,
+          roundWins: entry.seasonRoundWins,
+        };
+      }
+
+      // For settled gameweeks, use stored values
       return {
         userId: entry.userId,
         user: entry.user,
@@ -177,6 +206,18 @@ export default async function InsightsPage({ params }: PageProps) {
       status: gw.isSettled ? 'SETTLED' : 'CURRENT'
     }))
   );
+
+  // Debug: show calculated positions for each gameweek
+  leaderboardHistory.forEach((gw, index) => {
+    console.log(`Debug: GW${gw.gameweekNumber} positions:`, 
+      gw.positions.map(p => ({
+        name: p.user.name,
+        gwsSurvived: p.gwsSurvived,
+        roundWins: p.roundWins,
+        position: p.position
+      }))
+    );
+  });
 
   return (
     <InsightsClient
