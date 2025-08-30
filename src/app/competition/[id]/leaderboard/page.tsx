@@ -68,19 +68,22 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       const fixture = pick.fixture;
       let result;
       
-      if (pick.team === fixture.homeTeam) {
-        if (fixture.homeGoals > fixture.awayGoals) result = 'WIN';
-        else if (fixture.homeGoals === fixture.awayGoals) result = 'DRAW';
-        else result = 'LOSS';
-      } else {
-        if (fixture.awayGoals > fixture.homeGoals) result = 'WIN';
-        else if (fixture.awayGoals === fixture.homeGoals) result = 'DRAW';
-        else result = 'LOSS';
-      }
-      
-      // Only count gameweeks where the user survived (WIN or DRAW)
-      if (result === 'WIN' || result === 'DRAW') {
-        survivedGameweeks.add(pick.gameweek.gameweekNumber);
+      // Ensure we have valid goal values
+      if (fixture.homeGoals !== null && fixture.awayGoals !== null) {
+        if (pick.team === fixture.homeTeam) {
+          if (fixture.homeGoals > fixture.awayGoals) result = 'WIN';
+          else if (fixture.homeGoals === fixture.awayGoals) result = 'DRAW';
+          else result = 'LOSS';
+        } else {
+          if (fixture.awayGoals > fixture.homeGoals) result = 'WIN';
+          else if (fixture.awayGoals === fixture.homeGoals) result = 'DRAW';
+          else result = 'LOSS';
+        }
+        
+        // Only count gameweeks where the user survived (WIN or DRAW)
+        if (result === 'WIN' || result === 'DRAW') {
+          survivedGameweeks.add(pick.gameweek.gameweekNumber);
+        }
       }
     });
     
