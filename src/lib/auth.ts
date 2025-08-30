@@ -83,28 +83,15 @@ const authOptions = {
             })
             console.log("AUTH_DEBUG", { step: "find_entry", found: Boolean(existingEntry) })
 
-            // If not in competition, add them to the current round
+            // If not in competition, add them to the competition
             if (!existingEntry) {
-              const currentRound = await prisma.round.findFirst({
-                where: {
-                  competitionId: competition.id,
-                  endedAt: null
-                },
-                orderBy: { roundNumber: 'desc' }
+              await prisma.entry.create({
+                data: {
+                  userId: user.id,
+                  competitionId: competition.id
+                }
               })
-              console.log("AUTH_DEBUG", { step: "find_current_round", found: Boolean(currentRound) })
-
-              if (currentRound) {
-                await prisma.entry.create({
-                  data: {
-                    userId: user.id,
-                    competitionId: competition.id,
-                    roundId: currentRound.id,
-                    livesRemaining: competition.livesPerRound,
-                  }
-                })
-                console.log("AUTH_DEBUG", { step: "create_entry", userId: user.id })
-              }
+              console.log("AUTH_DEBUG", { step: "create_entry", userId: user.id })
             }
           }
 
