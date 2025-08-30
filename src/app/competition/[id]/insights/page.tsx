@@ -276,6 +276,41 @@ export default async function InsightsPage({ params }: PageProps) {
     }))
   })));
 
+  // Debug: show what gameweeks we're processing
+  console.log("Debug: Gameweeks being processed:", gameweeksToShow.map(gw => ({
+    number: gw.gameweekNumber,
+    settled: gw.isSettled,
+    willUseCurrentLeaderboard: !gw.isSettled
+  })));
+
+  // Debug: show current leaderboard calculation for unsettled GWs
+  const unsettledGameweeks = gameweeksToShow.filter(gw => !gw.isSettled);
+  if (unsettledGameweeks.length > 0) {
+    console.log("Debug: Processing unsettled gameweeks:", unsettledGameweeks.map(gw => gw.gameweekNumber));
+    
+    unsettledGameweeks.forEach(gw => {
+      const finishedGameweeks = competition.gameweeks.filter(gwg => gwg.isSettled);
+      console.log(`Debug: For GW${gw.gameweekNumber}, finished gameweeks are:`, finishedGameweeks.map(fgw => fgw.gameweekNumber));
+      
+      competition.entries.forEach(entry => {
+        let calculatedGwsSurvived = 0;
+        finishedGameweeks.forEach(fgw => {
+          const gwPicks = entry.picks.filter(pick => pick.gameweekId === fgw.id);
+          const gwWins = gwPicks.filter(pick => {
+            const fixture = pick.fixture;
+            if (fixture.status !== "FINISHED") return false;
+            return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+                   (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+          }).length;
+          
+          if (gwWins > 0) calculatedGwsSurvived++;
+        });
+        
+        console.log(`Debug: ${entry.user.name} calculated GWs survived: ${calculatedGwsSurvived}`);
+      });
+    });
+  }
+
   return (
     <InsightsClient
       competition={competition}
