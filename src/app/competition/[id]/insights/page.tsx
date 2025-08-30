@@ -103,6 +103,7 @@ export default async function InsightsPage({ params }: PageProps) {
 
   // For position tracking: include SETTLED gameweeks + CURRENT gameweek (no scheduled ones)
   // This ensures we show GW1, GW2 (settled) + GW3 (current in-progress) but not GW4+ (scheduled)
+  // As gameweeks progress, they automatically appear on the chart and pull from current leaderboard
   const currentGameweek = competition.gameweeks.find(gw => !gw.isSettled);
   const gameweeksToShow = [
     ...competition.gameweeks.filter(gw => gw.isSettled),
@@ -110,18 +111,11 @@ export default async function InsightsPage({ params }: PageProps) {
   ].sort((a, b) => a.gameweekNumber - b.gameweekNumber);
 
   const leaderboardHistory = gameweeksToShow.map((gameweek) => {
-    const gameweekEntries = competition.entries.map((entry) => {
-      const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
-      const gameweekWins = gameweekPicks.filter(pick => {
-        const fixture = pick.fixture;
-        if (fixture.status !== "FINISHED") return false;
-        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
-               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
-      }).length;
-
-      // For current gameweek, calculate real-time stats based on ALL finished fixtures
-      if (!gameweek.isSettled) {
-        // Calculate current GWs survived based on all finished gameweeks
+    // For current/unsettled gameweeks (GW3, GW4, etc.), get positions directly from current leaderboard
+    if (!gameweek.isSettled) {
+      // Get current leaderboard positions by calculating from all finished gameweeks
+      const currentEntries = competition.entries.map(entry => {
+        // Calculate current GWs survived from finished gameweeks only
         const finishedGameweeks = competition.gameweeks.filter(gw => gw.isSettled);
         let currentGwsSurvived = 0;
         
@@ -141,13 +135,55 @@ export default async function InsightsPage({ params }: PageProps) {
           userId: entry.userId,
           user: entry.user,
           gameweekNumber: gameweek.gameweekNumber,
-          survived: gameweekWins > 0,
+          survived: false, // Current GW not finished yet
           gwsSurvived: currentGwsSurvived,
           roundWins: entry.seasonRoundWins,
         };
-      }
+      });
 
-      // For settled gameweeks, use stored values
+      // Sort by current GWs survived, then by round wins, then by creation time
+      currentEntries.sort((a, b) => {
+        if (b.gwsSurvived !== a.gwsSurvived) return b.gwsSurvived - a.gwsSurvived;
+        if (b.roundWins !== a.roundWins) return b.roundWins - a.roundWins;
+        return new Date(a.user.createdAt).getTime() - new Date(b.user.createdAt).getTime();
+      });
+
+      // Handle ties - assign same position to players with identical records
+      const positions = currentEntries.map((entry, index) => {
+        let position = index + 1;
+
+        if (index > 0) {
+          const prevEntry = currentEntries[index - 1];
+          if (prevEntry.gwsSurvived === entry.gwsSurvived &&
+              prevEntry.roundWins === entry.roundWins) {
+            // Find the first entry with these same stats
+            const firstIndex = currentEntries.findIndex(e =>
+              e.gwsSurvived === entry.gwsSurvived &&
+              e.roundWins === entry.roundWins
+            );
+            position = firstIndex + 1;
+          }
+        }
+
+        return { ...entry, position };
+      });
+
+      return {
+        gameweekNumber: gameweek.gameweekNumber,
+        positions,
+      };
+    }
+
+    // For settled gameweeks (GW1, GW2, etc.), use historical data
+    const gameweekEntries = competition.entries.map((entry) => {
+      const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
+      const gameweekWins = gameweekPicks.filter(pick => {
+        const fixture = pick.fixture;
+        if (fixture.status !== "FINISHED") return false;
+        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+      }).length;
+
       return {
         userId: entry.userId,
         user: entry.user,
@@ -158,7 +194,7 @@ export default async function InsightsPage({ params }: PageProps) {
       };
     });
 
-    // Sort by GWs survived, then by round wins, then by creation time (earlier entry wins)
+    // Sort by GWs survived, then by round wins, then by creation time
     gameweekEntries.sort((a, b) => {
       if (b.gwsSurvived !== a.gwsSurvived) return b.gwsSurvived - a.gwsSurvived;
       if (b.roundWins !== a.roundWins) return b.roundWins - a.roundWins;
@@ -220,6 +256,25 @@ export default async function InsightsPage({ params }: PageProps) {
       }))
     );
   });
+
+  // Debug: show raw entry data to see what we're working with
+  console.log("Debug: Raw entry data:", competition.entries.map(entry => ({
+    name: entry.user.name,
+    seasonGwsSurvived: entry.seasonGwsSurvived,
+    seasonRoundWins: entry.seasonRoundWins,
+    picks: entry.picks.map(pick => ({
+      gameweek: pick.gameweek.gameweekNumber,
+      team: pick.team,
+      fixtureStatus: pick.fixture.status,
+      homeTeam: pick.fixture.homeTeam,
+      awayTeam: pick.fixture.awayTeam,
+      homeGoals: pick.fixture.homeGoals,
+      awayGoals: pick.fixture.awayGoals,
+      isWin: pick.fixture.status === "FINISHED" && 
+        ((pick.team === pick.fixture.homeTeam && pick.fixture.homeGoals! > pick.fixture.awayGoals!) ||
+         (pick.team === pick.fixture.awayTeam && pick.fixture.awayGoals! > pick.fixture.homeGoals!))
+    }))
+  })));
 
   return (
     <InsightsClient
