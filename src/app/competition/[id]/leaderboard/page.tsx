@@ -28,7 +28,8 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
           user: true,
           picks: {
             include: {
-              gameweek: true
+              gameweek: true,
+              fixture: true
             }
           },
           round: true
@@ -51,13 +52,35 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     notFound()
   }
 
-  // Calculate gameweeks survived for each entry (only count settled gameweeks)
+  // Calculate gameweeks survived for each entry (count settled gameweeks + finished fixtures from current gameweek)
   const entriesWithStats = competition.entries.map(entry => {
+    // Count settled gameweeks
     const settledPicks = entry.picks.filter(pick => pick.gameweek.isSettled);
-    const uniqueSettledGameweeks = new Set(settledPicks.map(pick => pick.gameweek.gameweekNumber));
+    const settledGameweeks = new Set(settledPicks.map(pick => pick.gameweek.gameweekNumber));
+    
+    // Count finished fixtures from current gameweek (GW3)
+    const currentGameweek = entry.picks.find(pick => !pick.gameweek.isSettled);
+    let currentGameweekWins = 0;
+    
+    if (currentGameweek) {
+      // Check if any fixtures in the current gameweek have finished and the user won
+      const currentGameweekPicks = entry.picks.filter(pick => pick.gameweekId === currentGameweek.gameweekId);
+      currentGameweekWins = currentGameweekPicks.filter(pick => {
+        const fixture = pick.fixture;
+        if (fixture.status !== "FINISHED") return false;
+        
+        // Check if this pick won
+        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+      }).length;
+    }
+    
+    // Total GWs survived = settled gameweeks + current gameweek wins (if any)
+    const totalGwsSurvived = settledGameweeks.size + (currentGameweekWins > 0 ? 1 : 0);
+    
     return {
       ...entry,
-      calculatedGwsSurvived: uniqueSettledGameweeks.size
+      calculatedGwsSurvived: totalGwsSurvived
     };
   });
 
