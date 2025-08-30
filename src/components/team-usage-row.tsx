@@ -118,7 +118,7 @@ export default function TeamUsageRow({ teamStat, competitionId }: TeamUsageRowPr
                       </div>
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <span>Round {getRoundEmoji(pick.entry?.round?.roundNumber || 1)} • GW{pick.gameweek?.gameweekNumber || "?"} • {formatDate(pick.fixture?.kickoff || new Date().toISOString())}</span>
+                        <span>Round {getRoundEmoji(pick.entry?.round?.roundNumber || 1)} • GW{pick.gameweek?.gameweekNumber || "?"} • {formatDate(pick.fixture?.kickoff || new Date().toISOString())} • {pick.fixture?.homeTeam} {pick.fixture?.homeGoals}-{pick.fixture?.awayGoals} {pick.fixture?.awayTeam}</span>
                       </div>
                       
                       <div className="flex items-center space-x-2">
