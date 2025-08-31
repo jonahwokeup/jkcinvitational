@@ -95,15 +95,24 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     };
   });
 
-  // Sort entries by GWs survived, then by round wins, then by creation time
+  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations
   entriesWithStats.sort((a, b) => {
-    if (a.calculatedGwsSurvived !== b.calculatedGwsSurvived) {
-      return b.calculatedGwsSurvived - a.calculatedGwsSurvived;
-    }
+    // 1. Round Wins (highest first)
     if (a.seasonRoundWins !== b.seasonRoundWins) {
       return b.seasonRoundWins - a.seasonRoundWins;
     }
-    // If still tied, use creation time (earlier entry wins)
+    
+    // 2. GWs Survived (if tied on Round Wins)
+    if (a.calculatedGwsSurvived !== b.calculatedGwsSurvived) {
+      return b.calculatedGwsSurvived - a.calculatedGwsSurvived;
+    }
+    
+    // 3. Eliminations (if tied on both - fewer eliminations = better)
+    if (a.eliminations !== b.eliminations) {
+      return a.eliminations - b.eliminations;
+    }
+    
+    // 4. If still tied, use creation time (earlier entry wins)
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
@@ -113,12 +122,14 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     
     if (index > 0) {
       const prevEntry = entriesWithStats[index - 1];
-      if (prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          prevEntry.seasonRoundWins === entry.seasonRoundWins) {
+      if (prevEntry.seasonRoundWins === entry.seasonRoundWins &&
+          prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
+          prevEntry.eliminations === entry.eliminations) {
         // Find the first entry with these same stats
         const firstIndex = entriesWithStats.findIndex(e => 
-          e.calculatedGwsSurvived === entry.calculatedGwsSurvived && 
-          e.seasonRoundWins === entry.seasonRoundWins
+          e.seasonRoundWins === entry.seasonRoundWins && 
+          e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
+          e.eliminations === entry.eliminations
         );
         position = firstIndex + 1;
       }
@@ -166,10 +177,10 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                     Player
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    GWs Survived
+                    Round Wins
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Round Wins
+                    GWs Survived
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Eliminations
@@ -226,12 +237,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm font-medium text-gray-900">
-                          {entry.calculatedGwsSurvived}
+                          {entry.seasonRoundWins}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm font-medium text-gray-900">
-                          {entry.seasonRoundWins}
+                          {entry.calculatedGwsSurvived}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
