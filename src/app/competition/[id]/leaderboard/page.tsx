@@ -56,7 +56,7 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
 
   // Calculate real-time stats for each entry
   const entriesWithStats = competition.entries.map(entry => {
-    // Count GWs survived (including current GWs where picks have won)
+    // Count GWs survived (only count gameweeks where picks actually won)
     let gwsSurvived = 0;
     const gameweekResults = new Map<number, boolean>();
     
@@ -77,11 +77,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       }
     });
     
-    // Count unique gameweeks where the user survived
-    gwsSurvived = gameweekResults.size;
+    // Count unique gameweeks where the user actually WON (survived)
+    // Only count gameweeks where they won, not just where they had picks
+    gwsSurvived = Array.from(gameweekResults.values()).filter(result => result === true).length;
     
     // Count eliminations (gameweeks where user lost)
-    const eliminations = Array.from(gameweekResults.values()).filter(result => !result).length;
+    const eliminations = Array.from(gameweekResults.values()).filter(result => result === false).length;
     
     // Check if currently eliminated
     const isEliminated = entry.livesRemaining <= 0;
