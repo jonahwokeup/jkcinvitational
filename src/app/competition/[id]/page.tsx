@@ -339,14 +339,12 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {eliminatedEntries.map((entry: any) => {
-                    const lastPick = entry.picks[entry.picks.length - 1]
+                    // For eliminated users, show their pick from the gameweek they were eliminated in
+                    const eliminatedGameweekPick = entry.eliminatedAtGw ? 
+                      entry.picks.find((pick: any) => pick.gameweek.gameweekNumber === entry.eliminatedAtGw) : null
                     
-                    // Find the pick for the current locked gameweek
-                    const currentGameweekPick = currentGameweek ? 
-                      entry.picks.find((pick: any) => pick.gameweekId === currentGameweek.id) : null
-                    
-                    // Show team crest for current gameweek pick if locked, otherwise show last pick
-                    const pickToShow = isLocked && currentGameweekPick ? currentGameweekPick : lastPick
+                    // Fallback to last pick if we can't find the eliminated gameweek pick
+                    const pickToShow = eliminatedGameweekPick || entry.picks[entry.picks.length - 1]
                     
                     return (
                       <div

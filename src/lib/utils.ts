@@ -90,3 +90,5 @@ export type PremierLeagueTeam = typeof PREMIER_LEAGUE_TEAMS[number]
 export function isValidTeam(team: string): team is PremierLeagueTeam {
   return PREMIER_LEAGUE_TEAMS.includes(team as PremierLeagueTeam)
 }
+
+

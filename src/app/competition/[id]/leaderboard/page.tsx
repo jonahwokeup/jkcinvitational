@@ -34,17 +34,19 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
           },
           round: true
         },
-        orderBy: [
-          { seasonRoundWins: 'desc' },
-          { firstRoundWinAt: 'asc' },
-          { seasonMissedPicks: 'asc' },
-        ],
       },
-      seasonChampion: {
+      gameweeks: {
         include: {
-          user: true,
+          fixtures: {
+            include: {
+              picks: true
+            }
+          }
         },
-      },
+        orderBy: {
+          gameweekNumber: 'asc'
+        }
+      }
     },
   })
 
@@ -52,53 +54,92 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     notFound()
   }
 
-  // Calculate gameweeks survived for each entry (count settled gameweeks + finished fixtures from current gameweek)
+  // Calculate real-time stats for each entry
   const entriesWithStats = competition.entries.map(entry => {
-    // Count settled gameweeks
-    const settledPicks = entry.picks.filter(pick => pick.gameweek.isSettled);
-    const settledGameweeks = new Set(settledPicks.map(pick => pick.gameweek.gameweekNumber));
+    // Count GWs survived (only count gameweeks where picks actually won)
+    let gwsSurvived = 0;
+    const gameweekResults = new Map<number, boolean>();
     
-    // Count finished fixtures from current gameweek (GW3)
-    const currentGameweek = entry.picks.find(pick => !pick.gameweek.isSettled);
-    let currentGameweekWins = 0;
-    
-    if (currentGameweek) {
-      // Check if any fixtures in the current gameweek have finished and the user won
-      const currentGameweekPicks = entry.picks.filter(pick => pick.gameweekId === currentGameweek.gameweekId);
-      currentGameweekWins = currentGameweekPicks.filter(pick => {
-        const fixture = pick.fixture;
-        if (fixture.status !== "FINISHED") return false;
-        
+    entry.picks.forEach(pick => {
+      const gameweekNumber = pick.gameweek.gameweekNumber;
+      const fixture = pick.fixture;
+      
+      if (fixture.status === "FINISHED") {
         // Check if this pick won
-        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
-               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
-      }).length;
-    }
+        const isWin = (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+                     (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+        
+        if (isWin) {
+          gameweekResults.set(gameweekNumber, true);
+        } else {
+          gameweekResults.set(gameweekNumber, false);
+        }
+      }
+    });
     
-    // Total GWs survived = settled gameweeks + current gameweek wins (if any)
-    const totalGwsSurvived = settledGameweeks.size + (currentGameweekWins > 0 ? 1 : 0);
+    // Count unique gameweeks where the user actually WON (survived)
+    // Only count gameweeks where they won, not just where they had picks
+    gwsSurvived = Array.from(gameweekResults.values()).filter(result => result === true).length;
+    
+    // Count eliminations (gameweeks where user lost)
+    const eliminations = Array.from(gameweekResults.values()).filter(result => result === false).length;
+    
+    // Check if currently eliminated
+    const isEliminated = entry.livesRemaining <= 0;
     
     return {
       ...entry,
-      calculatedGwsSurvived: totalGwsSurvived
+      calculatedGwsSurvived: gwsSurvived,
+      eliminations,
+      isEliminated
     };
   });
 
-  // Re-sort entries based on calculated stats
+  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations
   entriesWithStats.sort((a, b) => {
+    // 1. Round Wins (highest first)
     if (a.seasonRoundWins !== b.seasonRoundWins) {
       return b.seasonRoundWins - a.seasonRoundWins;
     }
+    
+    // 2. GWs Survived (if tied on Round Wins)
     if (a.calculatedGwsSurvived !== b.calculatedGwsSurvived) {
       return b.calculatedGwsSurvived - a.calculatedGwsSurvived;
     }
-    if (a.firstRoundWinAt && b.firstRoundWinAt) {
-      return new Date(a.firstRoundWinAt).getTime() - new Date(b.firstRoundWinAt).getTime();
+    
+    // 3. Eliminations (if tied on both - fewer eliminations = better)
+    if (a.eliminations !== b.eliminations) {
+      return a.eliminations - b.eliminations;
     }
-    return a.seasonMissedPicks - b.seasonMissedPicks;
+    
+    // 4. If still tied, use creation time (earlier entry wins)
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
-  const entries = entriesWithStats;
+  // Handle ties - assign same position to players with identical records
+  const entriesWithPositions = entriesWithStats.map((entry, index) => {
+    let position = index + 1;
+    
+    if (index > 0) {
+      const prevEntry = entriesWithStats[index - 1];
+      if (prevEntry.seasonRoundWins === entry.seasonRoundWins &&
+          prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
+          prevEntry.eliminations === entry.eliminations) {
+        // Find the first entry with these same stats
+        const firstIndex = entriesWithStats.findIndex(e => 
+          e.seasonRoundWins === entry.seasonRoundWins && 
+          e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
+          e.eliminations === entry.eliminations
+        );
+        position = firstIndex + 1;
+      }
+    }
+    
+    return {
+      ...entry,
+      position
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,20 +159,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
             </Link>
           </div>
         </div>
-
-        {/* Season Champion */}
-        {competition.seasonChampion && (
-          <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg p-6 mb-8 text-center">
-            <Crown className="w-16 h-16 text-white mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Season Champion</h2>
-            <p className="text-xl text-white mb-1">
-              {competition.seasonChampion.user.name || competition.seasonChampion.user.email}
-            </p>
-            <p className="text-yellow-100">
-              {competition.seasonChampion.seasonRoundWins} round wins
-            </p>
-          </div>
-        )}
 
         {/* Leaderboard */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -156,12 +183,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                     GWs Survived
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Missed Picks
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    First Win
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Eliminations
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -170,9 +191,8 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {entries.map((entry, index) => {
+                {entriesWithPositions.map((entry) => {
                   const isCurrentUser = entry.userId === session.user!.id
-                  const isChampion = competition.seasonChampion?.id === entry.id
                   
                   return (
                     <tr
@@ -183,19 +203,19 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {index === 0 && (
+                          {entry.position === 1 && (
                             <Trophy className="w-5 h-5 text-yellow-500 mr-2" />
                           )}
-                          {index === 1 && (
+                          {entry.position === 2 && (
                             <Medal className="w-5 h-5 text-gray-400 mr-2" />
                           )}
-                          {index === 2 && (
+                          {entry.position === 3 && (
                             <Medal className="w-5 h-5 text-orange-500 mr-2" />
                           )}
                           <span className={`text-sm font-medium ${
                             isCurrentUser ? 'text-blue-900' : 'text-gray-900'
                           }`}>
-                            {index + 1}
+                            {entry.position}
                           </span>
                         </div>
                       </td>
@@ -211,11 +231,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                                   You
                                 </span>
                               )}
-                              {isChampion && (
-                                <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                                  Champion
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -226,35 +241,22 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm font-medium text-gray-900">
                           {entry.calculatedGwsSurvived}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm text-gray-900">
-                          {entry.seasonMissedPicks}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
-                          {entry.firstRoundWinAt 
-                            ? formatDate(entry.firstRoundWinAt, "MMM d")
-                            : '-'
-                          }
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
-                          {entry.eliminatedAtGw ? 1 : 0}
+                          {entry.eliminations}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
-                          entry.livesRemaining > 0 
+                          !entry.isEliminated 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {entry.livesRemaining > 0 ? '✅' : '❌'}
+                          {!entry.isEliminated ? '✅' : '❌'}
                         </span>
                       </td>
                     </tr>
@@ -272,7 +274,7 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
               <Users className="w-8 h-8 text-blue-600 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Players</p>
-                <p className="text-2xl font-bold text-gray-900">{entries.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{entriesWithPositions.length}</p>
               </div>
             </div>
           </div>
@@ -281,9 +283,9 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
             <div className="flex items-center">
               <Trophy className="w-8 h-8 text-yellow-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Rounds</p>
+                <p className="text-sm font-medium text-gray-600">Active Players</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {entries.reduce((sum, entry) => sum + entry.seasonRoundWins, 0)}
+                  {entriesWithPositions.filter(entry => !entry.isEliminated).length}
                 </p>
               </div>
             </div>
