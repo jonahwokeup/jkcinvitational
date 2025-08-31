@@ -2,9 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 
 // Dynamic imports for chart components
 const PositionTrackingChart = dynamic(() => import("@/components/position-tracking-chart"), {
@@ -24,38 +23,23 @@ interface InsightsClientProps {
 }
 
 export default function InsightsClient({ competition, teamStatsArray, leaderboardHistory }: InsightsClientProps) {
-  const router = useRouter();
-
-  const handleRefresh = () => {
-    router.refresh();
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link
-                href={`/competition/${competition.id}`}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span>Back</span>
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Insights</h1>
-                <p className="text-gray-600">{competition.name} - {competition.season}</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Insights</h1>
+              <p className="text-gray-600">{competition.name} - {competition.season}</p>
             </div>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            <Link
+              href={`/competition/${competition.id}`}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </Link>
           </div>
         </div>
 
