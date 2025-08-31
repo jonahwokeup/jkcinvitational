@@ -172,17 +172,24 @@ export default async function AdminPage({ params }: AdminPageProps) {
                   </div>
                   <div className="flex space-x-2">
                     {!gameweek.isSettled && (
-                      <button
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors"
-                        disabled
-                        title="Feature coming soon"
-                      >
-                        Settle
-                      </button>
+                      <form action={async () => {
+                        'use server'
+                        await settleGameweek(gameweek.id)
+                      }}>
+                        <button
+                          type="submit"
+                          className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors"
+                        >
+                          Settle
+                        </button>
+                      </form>
                     )}
-                    <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors">
+                    <Link
+                      href={`/competition/${competition.id}/admin/manage-fixtures?gameweek=${gameweek.id}`}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
+                    >
                       View
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
