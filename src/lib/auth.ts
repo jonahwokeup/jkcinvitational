@@ -28,10 +28,7 @@ console.log("🚨 AUTH_STARTUP_DEBUG - AUTHENTICATION SYSTEM LOADING 🚨", {
   timestamp: new Date().toISOString()
 })
 
-// Force an error if this runs to prove the file is loaded
-if (typeof window !== 'undefined') {
-  console.log("🚨 AUTH FILE LOADED IN BROWSER - THIS SHOULD NOT HAPPEN 🚨")
-}
+// Server-side authentication system loading
 
 // DEBUG: Authentication system is loading successfully
 
@@ -49,15 +46,18 @@ const authOptions = {
       },
       async authorize(credentials) {
         try {
-          console.log("AUTH_DEBUG", { 
+          // Force a visible error to show this function is being called
+          console.error("🚨 AUTH_FUNCTION_CALLED 🚨", {
             step: "start", 
             code: credentials?.accessCode,
             timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV
+            environment: process.env.NODE_ENV,
+            hasCredentials: !!credentials,
+            credentialsKeys: credentials ? Object.keys(credentials) : []
           })
           
           if (!credentials?.accessCode) {
-            console.log("AUTH_DEBUG", { step: "no_credentials" })
+            console.error("🚨 NO_CREDENTIALS_ERROR 🚨", { step: "no_credentials" })
             return null
           }
 
@@ -69,9 +69,17 @@ const authOptions = {
             ACCESS_CODES_TYPE: typeof ACCESS_CODES
           })
           
+          console.error("🚨 CHECKING_ACCESS_CODE 🚨", {
+            step: "checking_access_code", 
+            code: credentials.accessCode,
+            codeType: typeof credentials.accessCode,
+            ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
+            ACCESS_CODES_TYPE: typeof ACCESS_CODES
+          })
+          
           const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
           if (!userInfo) {
-            console.log("AUTH_DEBUG", { 
+            console.error("🚨 ACCESS_CODE_NOT_FOUND 🚨", { 
               step: "code_not_found", 
               code: credentials.accessCode,
               availableCodes: Object.keys(ACCESS_CODES),

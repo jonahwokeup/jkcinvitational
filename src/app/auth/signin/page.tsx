@@ -27,7 +27,7 @@ export default function SignInPage() {
     try {
       const result = await signIn("credentials", {
         accessCode,
-        csrfToken,
+        // csrfToken, // Temporarily disabled to test CSRF issue
         redirect: false,
       })
 
