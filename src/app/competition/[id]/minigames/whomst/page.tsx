@@ -29,6 +29,8 @@ interface GameState {
   revivalMode: boolean; // Whether user is selecting a pile to revive
   lastDealtCard: Card | null; // Store the last dealt card for revival
   eliminatedCards: (Card | null)[]; // Store the cards that caused each pile to be eliminated
+  usedRevivalValues: Set<number>; // Track which card values have been used for revival
+  showGameOverGif: boolean; // Whether to show the game over GIF animation
 }
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
@@ -86,8 +88,8 @@ function hasOnlyOneOpenPile(faceDown: boolean[]): boolean {
   return faceDown.filter(down => !down).length === 1;
 }
 
-// Helper function to check if there are 4 cards of the same value
-function hasFourOfAKind(grid: (Card | null)[], faceDown: boolean[]): boolean {
+// Helper function to check if there are 4 cards of the same value that haven't been used for revival
+function hasFourOfAKind(grid: (Card | null)[], faceDown: boolean[], usedRevivalValues: Set<number>): boolean {
   const valueCounts: { [key: number]: number } = {};
   
   grid.forEach((card, index) => {
@@ -96,7 +98,30 @@ function hasFourOfAKind(grid: (Card | null)[], faceDown: boolean[]): boolean {
     }
   });
   
-  return Object.values(valueCounts).some(count => count >= 4);
+  // Check if any value has 4+ cards AND hasn't been used for revival
+  return Object.entries(valueCounts).some(([value, count]) => 
+    count >= 4 && !usedRevivalValues.has(parseInt(value))
+  );
+}
+
+// Helper function to get the card value that triggered the revival
+function getRevivalValue(grid: (Card | null)[], faceDown: boolean[]): number | null {
+  const valueCounts: { [key: number]: number } = {};
+  
+  grid.forEach((card, index) => {
+    if (card && !faceDown[index]) {
+      valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+    }
+  });
+  
+  // Find the first value that has 4+ cards
+  for (const [value, count] of Object.entries(valueCounts)) {
+    if (count >= 4) {
+      return parseInt(value);
+    }
+  }
+  
+  return null;
 }
 
 export default function WhomstPage({ params }: WhomstPageProps) {
@@ -116,6 +141,8 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     revivalMode: false,
     lastDealtCard: null,
     eliminatedCards: Array(9).fill(null),
+    usedRevivalValues: new Set(),
+    showGameOverGif: false,
   });
 
   useEffect(() => {
@@ -142,6 +169,8 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       revivalMode: false,
       lastDealtCard: null,
       eliminatedCards: Array(9).fill(null),
+      usedRevivalValues: new Set(),
+      showGameOverGif: false,
     });
   };
 
@@ -214,16 +243,16 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           newGrid[gameState.selectedCardIndex] = nextCard;
         }
 
-        setGameState(prev => ({
-          ...prev,
-          deck: newDeck,
-          grid: newGrid,
-          score: prev.score + 1,
-          selectedCardIndex: null,
-          dealtCard: null,
-          isAnimating: false,
-          showReviveButton: hasFourOfAKind(newGrid, prev.faceDown),
-        }));
+                  setGameState(prev => ({
+            ...prev,
+            deck: newDeck,
+            grid: newGrid,
+            score: prev.score + 1,
+            selectedCardIndex: null,
+            dealtCard: null,
+            isAnimating: false,
+            showReviveButton: hasFourOfAKind(newGrid, prev.faceDown, prev.usedRevivalValues),
+          }));
       } else {
         // Check if this should allow continuation due to same value and only one pile
         const onlyOnePile = hasOnlyOneOpenPile(gameState.faceDown);
@@ -244,7 +273,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             selectedCardIndex: null,
             dealtCard: null,
             isAnimating: false,
-            showReviveButton: hasFourOfAKind(newGrid, prev.faceDown),
+            showReviveButton: hasFourOfAKind(newGrid, prev.faceDown, prev.usedRevivalValues),
           }));
         } else {
           // Incorrect prediction - turn card face down
@@ -264,7 +293,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             selectedCardIndex: null,
             dealtCard: null,
             isAnimating: false,
-            showReviveButton: hasFourOfAKind(prev.grid, newFaceDown),
+            showReviveButton: hasFourOfAKind(prev.grid, newFaceDown, prev.usedRevivalValues),
           }));
         }
       }
@@ -279,6 +308,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           return {
             ...prev,
             gameStatus: isWon ? 'won' : isLost ? 'lost' : 'playing',
+            showGameOverGif: isLost, // Show GIF only when game is lost
           };
         });
       }, 300);
@@ -315,11 +345,18 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     const eliminatedCard = gameState.eliminatedCards[index];
     if (!eliminatedCard) return; // Safety check
 
+    // Find which card value was used for this revival
+    const revivalValue = getRevivalValue(gameState.grid, gameState.faceDown);
+    if (revivalValue === null) return; // Safety check
+
     const newFaceDown = [...gameState.faceDown];
     newFaceDown[index] = false; // Revive the pile
 
     const newGrid = [...gameState.grid];
     newGrid[index] = eliminatedCard; // Put the eliminated card back in the revived pile
+
+    const newUsedRevivalValues = new Set(gameState.usedRevivalValues);
+    newUsedRevivalValues.add(revivalValue); // Mark this value as used for revival
 
     setGameState(prev => ({
       ...prev,
@@ -327,6 +364,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       faceDown: newFaceDown,
       revivalMode: false,
       showReviveButton: false, // Button stays hidden after revival is used
+      usedRevivalValues: newUsedRevivalValues,
     }));
   };
 
@@ -540,6 +578,32 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             ))}
           </div>
 
+          {/* Game Over GIF Overlay */}
+          {gameState.showGameOverGif && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md mx-4 text-center">
+                <div className="mb-4">
+                  <img 
+                    src="/thatsthat.GIF" 
+                    alt="Game Over" 
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                </div>
+                <h3 className="text-2xl font-bold text-red-600 mb-2">💀 Game Over 💀</h3>
+                <p className="text-gray-600 mb-4">All cards are face down. Better luck next time!</p>
+                <button
+                  onClick={() => {
+                    setGameState(prev => ({ ...prev, showGameOverGif: false }));
+                    initializeGame();
+                  }}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Dealt Card Display */}
           {gameState.dealtCard && (
             <div className={`dealt-card ${gameState.isAnimating ? 'moving' : ''}`}>
@@ -588,7 +652,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           )}
 
           {/* Game Over */}
-          {gameState.gameStatus !== 'playing' && (
+          {gameState.gameStatus !== 'playing' && !gameState.showGameOverGif && (
             <div className="text-center">
               <div className={`text-3xl font-bold mb-4 ${
                 gameState.gameStatus === 'won' ? 'text-green-600' : 'text-red-600'
@@ -623,6 +687,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             <p className="font-semibold mt-3">Special Rules:</p>
             <p>• <strong>Same Value Continuation:</strong> If only 1 pile remains and the dealt card has the same value, you can continue playing</p>
             <p>• <strong>Four of a Kind Revival:</strong> Get 4 cards of the same value to revive a face-down pile with the card that eliminated it</p>
+            <p>• <strong>One Revival Per Value:</strong> Each set of 4 cards of the same value can only be used for revival once</p>
           </div>
         </div>
       </div>
