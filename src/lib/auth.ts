@@ -33,8 +33,7 @@ if (typeof window !== 'undefined') {
   console.log("🚨 AUTH FILE LOADED IN BROWSER - THIS SHOULD NOT HAPPEN 🚨")
 }
 
-// Force a visible error to prove this file is loading
-throw new Error("🚨 AUTHENTICATION SYSTEM LOADING - IF YOU SEE THIS, THE FILE IS WORKING 🚨")
+// DEBUG: Authentication system is loading successfully
 
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
