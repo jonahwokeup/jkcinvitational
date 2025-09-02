@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
-import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3 } from 'lucide-react'
+import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
 import Image from 'next/image'
@@ -377,8 +377,8 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {/* Navigation */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Link
             href={`/competition/${competition.id}/pick`}
             className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
@@ -406,15 +406,24 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
             <p className="text-gray-600">Season standings and statistics</p>
           </Link>
 
-          <Link
-            href={`/competition/${competition.id}/insights`}
-            className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
-          >
-            <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Insights</h3>
-            <p className="text-gray-600">Team statistics and position tracking</p>
-          </Link>
-        </div>
+                      <Link
+              href={`/competition/${competition.id}/insights`}
+              className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
+            >
+              <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Insights</h3>
+              <p className="text-gray-600">Team statistics and position tracking</p>
+            </Link>
+
+            <Link
+              href={`/competition/${competition.id}/minigames`}
+              className="block p-6 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-center"
+            >
+              <Gamepad2 className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Minigames</h3>
+              <p className="text-gray-600">Fun side games and challenges</p>
+            </Link>
+          </div>
 
         {/* Admin Navigation - Only for Jonah McGowan */}
         {session.user.email === 'jonah@jkc.com' && (
