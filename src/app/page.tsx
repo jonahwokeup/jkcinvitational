@@ -9,6 +9,9 @@ export default function HomePage() {
     hasAuthStatus: typeof AuthStatus !== 'undefined'
   })
   
+  // Force a visible error to prove this component is loading
+  throw new Error("🚨 HOMEPAGE COMPONENT LOADING - IF YOU SEE THIS, THE COMPONENT IS WORKING 🚨")
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700">
       <div className="container mx-auto px-4 py-16">
