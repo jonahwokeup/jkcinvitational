@@ -180,13 +180,13 @@ export default async function PickPage({ params }: PickPageProps) {
       
       // Check if user was eliminated in this gameweek
       // If they were eliminated, their pick for the next gameweek shouldn't count
-      const nextGameweek = competition.gameweeks.find((gw: any) => 
+      const nextGameweekForPick = competition.gameweeks.find((gw: any) => 
         gw.gameweekNumber === gameweek.gameweekNumber + 1
       )
       
-      if (nextGameweek && nextGameweek.isSettled) {
+      if (nextGameweekForPick && nextGameweekForPick.isSettled) {
         // Check if user has a pick for the next gameweek
-        const nextPick = entry.picks.find((p: any) => p.gameweekId === nextGameweek.id)
+        const nextPick = entry.picks.find((p: any) => p.gameweekId === nextGameweekForPick.id)
         if (nextPick) {
           // User made a pick for the next gameweek, so they survived this one
           return true
