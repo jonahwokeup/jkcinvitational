@@ -42,12 +42,15 @@ export default async function DashboardPage() {
   // Get next gameweek for each competition
   const competitionsWithNextGameweek = await Promise.all(
     entries.map(async (entry) => {
+      // Find the next available gameweek for picks
+      // This should be the first gameweek that's not settled and not locked yet
       const nextGameweek = await prisma.gameweek.findFirst({
         where: {
           competitionId: entry.competitionId,
-          lockTime: { gt: new Date() },
+          isSettled: false, // Not settled yet
+          lockTime: { gt: new Date() }, // Not locked yet
         },
-        orderBy: { lockTime: 'asc' },
+        orderBy: { gameweekNumber: 'asc' }, // Order by gameweek number, not lock time
       })
 
       return {
