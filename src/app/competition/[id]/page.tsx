@@ -7,6 +7,7 @@ import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
+import ExactoButton from '@/components/exacto-button'
 import Image from 'next/image'
 import type { Session } from 'next-auth'
 
@@ -35,6 +36,11 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
               picks: {
                 include: {
                   gameweek: true,
+                  fixture: true,
+                },
+              },
+              exactoPredictions: {
+                include: {
                   fixture: true,
                 },
               },
@@ -307,6 +313,14 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           <p className="text-sm text-green-700">
                             {entry.picks.length} picks made
                           </p>
+                          {/* Show 'E' badge if user has used their Exacto */}
+                          {entry.usedExacto && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center justify-center w-6 h-6 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">
+                                E
+                              </span>
+                            </div>
+                          )}
                           {pickToShow && (
                             <div className="mt-1">
                               {showCrest ? (
@@ -355,14 +369,45 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           <p className="font-medium text-red-900">
                             {entry.user.name || entry.user.email}
                           </p>
-                          <p className="text-sm text-red-700">
-                            Eliminated GW {entry.eliminatedAtGw}
-                          </p>
-                          {pickToShow && (
-                            <div className="mt-1">
-                              <TeamCrest teamName={pickToShow.team} size="sm" />
-                            </div>
-                          )}
+                                                            <p className="text-sm text-red-700">
+                                    Eliminated GW {entry.eliminatedAtGw}
+                                  </p>
+                                  {pickToShow && (
+                                    <div className="mt-1">
+                                      <TeamCrest teamName={pickToShow.team} size="sm" />
+                                    </div>
+                                  )}
+                                  {/* Show Exacto Submitted message if user has used Exacto */}
+                                  {entry.usedExacto && (
+                                    <div className="mt-2">
+                                      <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">
+                                        🎯 Exacto Submitted
+                                      </span>
+                                    </div>
+                                  )}
+                                  {/* Show Exacto prediction if picks are locked */}
+                                  {entry.usedExacto && entry.exactoPredictions.length > 0 && !isBeforeLock(scheduledGameweek?.lockTime || new Date()) && (
+                                    <div className="mt-2">
+                                      <div className="text-xs text-orange-700">
+                                        <div className="font-medium">Exacto Prediction:</div>
+                                        <div>
+                                          {entry.exactoPredictions[0].fixture.homeTeam} vs {entry.exactoPredictions[0].fixture.awayTeam}
+                                        </div>
+                                        <div>
+                                          {entry.exactoPredictions[0].homeScore} - {entry.exactoPredictions[0].awayScore}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Show Exacto button for eliminated players if there's a next gameweek */}
+                                  {scheduledGameweek && (
+                                    <ExactoButton
+                                      userId={entry.user.id}
+                                      currentUserId={session.user!.id}
+                                      gameweekNumber={scheduledGameweek.gameweekNumber}
+                                      competitionId={competition.id}
+                                    />
+                                  )}
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-red-600">0</div>
@@ -429,7 +474,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
         {session.user.email === 'jonah@jkc.com' && (
           <div className="mt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Tools</h3>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Link
                 href={`/competition/${competition.id}/admin`}
                 className="block p-6 bg-purple-50 rounded-lg shadow-sm border border-purple-200 hover:shadow-md transition-shadow text-center"
@@ -455,6 +500,15 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <Users className="w-8 h-8 text-teal-600 mx-auto mb-2" />
                 <h3 className="text-lg font-semibold text-teal-900 mb-1">Manage Picks</h3>
                 <p className="text-teal-700">View and edit user picks</p>
+              </Link>
+
+              <Link
+                href={`/competition/${competition.id}/admin/manage-exactos`}
+                className="block p-6 bg-amber-50 rounded-lg shadow-sm border border-amber-200 hover:shadow-md transition-shadow text-center"
+              >
+                <Target className="w-8 h-8 text-amber-600 mx-auto mb-2" />
+                <h3 className="text-lg font-semibold text-amber-900 mb-1">Manage Exactos</h3>
+                <p className="text-amber-700">View and manage Exacto predictions</p>
               </Link>
             </div>
           </div>

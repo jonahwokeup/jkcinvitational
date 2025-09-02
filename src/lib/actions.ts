@@ -126,7 +126,14 @@ export async function createPick(formData: FormData) {
         competitionId: fixture.gameweek.competitionId,
         roundId: { not: null },
       },
-      include: { picks: true },
+      include: { 
+        picks: true,
+        exactoPredictions: {
+          include: {
+            fixture: true
+          }
+        }
+      },
     })
 
     if (!entry) {
@@ -141,12 +148,21 @@ export async function createPick(formData: FormData) {
     const pickedTeam = team === fixture.homeTeam ? fixture.homeTeam : fixture.awayTeam
 
     // Check if team has already been used in this round (excluding current pick if updating)
-    const usedTeams = entry.picks
+    const usedTeamsFromPicks = entry.picks
       .filter(pick => !pickId || pick.id !== pickId)
       .map(pick => pick.team)
     
-    if (usedTeams.includes(pickedTeam)) {
-      return { error: "You have already used this team in this round" }
+    // Get teams from Exacto predictions (these count as "used teams")
+    const usedTeamsFromExacto = entry.exactoPredictions
+      .filter(prediction => prediction.fixture.homeTeam === pickedTeam || prediction.fixture.awayTeam === pickedTeam)
+      .map(prediction => [prediction.fixture.homeTeam, prediction.fixture.awayTeam])
+      .flat()
+    
+    // Combine all used teams
+    const allUsedTeams = [...usedTeamsFromPicks, ...usedTeamsFromExacto]
+    
+    if (allUsedTeams.includes(pickedTeam)) {
+      return { error: "You have already used this team in this round (including in Exacto predictions)" }
     }
 
     if (pickId) {
@@ -210,45 +226,31 @@ export async function settleGameweek(gameweekId: string) {
       return { error: "No active round found" }
     }
 
-    const entries = currentRound.entries
-    const picks = gameweek.picks
+    // Process gameweek results (including Exacto evaluation and revival)
+    await processGameweekResults(gameweekId)
 
-    // Process each pick
-    for (const pick of picks as any[]) {
-      const fixture = pick.fixture
-      if (fixture.status !== "FINISHED" || fixture.homeGoals === null || fixture.awayGoals === null) {
-        continue
-      }
+    // Get updated entries after processing
+    const updatedRound = await prisma.round.findFirst({
+      where: {
+        competitionId: gameweek.competitionId,
+        endedAt: null,
+      },
+      include: { entries: true },
+    })
 
-      const outcome = getFixtureOutcome(
-        fixture.homeGoals,
-        fixture.awayGoals,
-        pick.team,
-        fixture.homeTeam,
-        fixture.awayTeam
-      )
-
-      if (outcome === "LOSS") {
-        // Eliminate the player
-        await prisma.entry.update({
-          where: { id: pick.entryId },
-          data: {
-            livesRemaining: 0,
-            eliminatedAtGw: gameweek.gameweekNumber,
-          },
-        })
-      }
+    if (!updatedRound) {
+      return { error: "No active round found after processing" }
     }
 
-    // Check if round should end (only one player remaining)
-    const aliveEntries = entries.filter(entry => entry.livesRemaining > 0)
+    // Check if round should end (only one player remaining after Exacto processing)
+    const aliveEntries = updatedRound.entries.filter(entry => entry.livesRemaining > 0)
     
     if (aliveEntries.length === 1) {
       // Round winner found
       const winner = aliveEntries[0]
       
       await prisma.round.update({
-        where: { id: currentRound.id },
+        where: { id: updatedRound.id },
         data: {
           winnerEntryId: winner.id,
           endedAt: new Date(),
@@ -267,7 +269,7 @@ export async function settleGameweek(gameweekId: string) {
       const newRound = await prisma.round.create({
         data: {
           competitionId: gameweek.competitionId,
-          roundNumber: currentRound.roundNumber + 1,
+          roundNumber: updatedRound.roundNumber + 1,
         },
       })
 
@@ -639,6 +641,20 @@ async function processFixturePicks(fixtureId: string, homeGoals: number, awayGoa
 // Process gameweek results and eliminate players
 async function processGameweekResults(gameweekId: string) {
   try {
+    // Get the gameweek and competition info
+    const gameweek = await prisma.gameweek.findUnique({
+      where: { id: gameweekId },
+      include: {
+        competition: true,
+        fixtures: true
+      }
+    })
+
+    if (!gameweek) {
+      console.error('Gameweek not found:', gameweekId)
+      return
+    }
+
     // Get all picks for this gameweek
     const picks = await prisma.pick.findMany({
       where: { gameweekId },
@@ -648,6 +664,7 @@ async function processGameweekResults(gameweekId: string) {
       }
     })
 
+    // STEP 1: Process regular Survivor picks and eliminate losing players
     for (const pick of picks as any[]) {
       const fixture = pick.fixture
       
@@ -670,12 +687,115 @@ async function processGameweekResults(gameweekId: string) {
             where: { id: pick.entry.id },
             data: {
               livesRemaining: 0,
-              eliminatedAtGw: fixture.gameweek.gameweekNumber
+              eliminatedAtGw: gameweek.gameweekNumber
             }
           })
         }
       }
     }
+
+    // STEP 2: Check how many survivors remain after regular elimination
+    const currentRound = await prisma.round.findFirst({
+      where: {
+        competitionId: gameweek.competitionId,
+        endedAt: null,
+      },
+      include: { entries: true },
+    })
+
+    if (!currentRound) {
+      console.error('No active round found for competition:', gameweek.competitionId)
+      return
+    }
+
+    const aliveEntries = currentRound.entries.filter(entry => entry.livesRemaining > 0)
+    console.log(`🎯 After regular elimination: ${aliveEntries.length} survivors remain`)
+
+    // STEP 3: Only process Exacto predictions if there are multiple survivors
+    if (aliveEntries.length > 1) {
+      console.log('🎯 Multiple survivors remain - processing Exacto predictions...')
+      
+      // Get all Exacto predictions for this gameweek
+      const exactoPredictions = await prisma.exactoPrediction.findMany({
+        where: {
+          entry: {
+            roundId: currentRound.id
+          }
+        },
+        include: {
+          entry: true,
+          fixture: true
+        }
+      })
+
+      console.log(`🎯 Found ${exactoPredictions.length} Exacto predictions to evaluate`)
+
+      // Process each Exacto prediction
+      for (const prediction of exactoPredictions as any[]) {
+        const fixture = prediction.fixture
+        
+        // Only evaluate if the fixture has results
+        if (fixture.status === 'FINISHED' && fixture.homeGoals !== null && fixture.awayGoals !== null) {
+          // Check if the prediction matches the actual result
+          const isCorrect = prediction.homeScore === fixture.homeGoals && 
+                           prediction.awayScore === fixture.awayGoals
+          
+          console.log(`🎯 Exacto prediction: ${fixture.homeTeam} ${prediction.homeScore}-${prediction.awayScore} ${fixture.awayTeam}`)
+          console.log(`🎯 Actual result: ${fixture.homeTeam} ${fixture.homeGoals}-${fixture.awayGoals} ${fixture.awayTeam}`)
+          console.log(`🎯 Prediction ${isCorrect ? 'CORRECT' : 'INCORRECT'}`)
+
+          // Update the prediction with the result
+          await prisma.exactoPrediction.update({
+            where: { id: prediction.id },
+            data: { isCorrect }
+          })
+
+          // If the prediction is correct, revive the eliminated player
+          if (isCorrect) {
+            console.log(`🎯 Reviving eliminated player: ${prediction.entry.userId}`)
+            
+            await prisma.entry.update({
+              where: { id: prediction.entryId },
+              data: {
+                livesRemaining: 1,
+                eliminatedAtGw: null,
+                exactoSuccess: true,
+                usedExacto: true
+              }
+            })
+
+            console.log(`🎯 Player revived successfully!`)
+          } else {
+            // Mark that they used their Exacto but it was incorrect
+            await prisma.entry.update({
+              where: { id: prediction.entryId },
+              data: {
+                exactoSuccess: false
+              }
+            })
+          }
+        }
+      }
+    } else {
+      console.log('🎯 Only one survivor remains - Exacto predictions are void')
+      
+      // Mark all Exacto predictions as void (not evaluated)
+      const exactoPredictions = await prisma.exactoPrediction.findMany({
+        where: {
+          entry: {
+            roundId: currentRound.id
+          }
+        }
+      })
+
+      for (const prediction of exactoPredictions) {
+        await prisma.exactoPrediction.update({
+          where: { id: prediction.id },
+          data: { isCorrect: false } // Mark as incorrect since they're void
+        })
+      }
+    }
+
   } catch (error) {
     console.error('Error processing gameweek results:', error)
   }

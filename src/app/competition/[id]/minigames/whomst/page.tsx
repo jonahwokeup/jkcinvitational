@@ -31,6 +31,12 @@ interface GameState {
   eliminatedCards: (Card | null)[]; // Store the cards that caused each pile to be eliminated
   usedRevivalValues: Set<number>; // Track which card values have been used for revival
   showGameOverGif: boolean; // Whether to show the game over GIF animation
+  // Exacto system
+  showExactoButton: boolean; // Whether to show the "Use Exacto" button
+  exactoMode: boolean; // Whether user is in Exacto prediction mode
+  exactoPrediction: { fixtureId: string; homeScore: number; awayScore: number } | null; // User's Exacto prediction
+  usedExacto: boolean; // Whether user has already used their Exacto opportunity
+  exactoSuccess: boolean; // Whether user's Exacto was successful
 }
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
@@ -143,6 +149,12 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     eliminatedCards: Array(9).fill(null),
     usedRevivalValues: new Set(),
     showGameOverGif: false,
+    // Exacto system
+    showExactoButton: false,
+    exactoMode: false,
+    exactoPrediction: null,
+    usedExacto: false,
+    exactoSuccess: false,
   });
 
   useEffect(() => {
@@ -171,6 +183,12 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       eliminatedCards: Array(9).fill(null),
       usedRevivalValues: new Set(),
       showGameOverGif: false,
+      // Exacto system
+      showExactoButton: false,
+      exactoMode: false,
+      exactoPrediction: null,
+      usedExacto: false,
+      exactoSuccess: false,
     });
   };
 
@@ -365,6 +383,25 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       revivalMode: false,
       showReviveButton: false, // Button stays hidden after revival is used
       usedRevivalValues: newUsedRevivalValues,
+    }));
+  };
+
+  // Handle Exacto button click
+  const handleExactoClick = () => {
+    setGameState(prev => ({
+      ...prev,
+      exactoMode: true,
+      showExactoButton: false,
+    }));
+  };
+
+  // Handle Exacto prediction submission
+  const handleExactoPrediction = (fixtureId: string, homeScore: number, awayScore: number) => {
+    setGameState(prev => ({
+      ...prev,
+      exactoPrediction: { fixtureId, homeScore, awayScore },
+      exactoMode: false,
+      usedExacto: true,
     }));
   };
 
@@ -651,6 +688,27 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             </div>
           )}
 
+          {/* Exacto Button */}
+          {gameState.showExactoButton && !gameState.exactoMode && !gameState.isAnimating && (
+            <div className="text-center">
+              <button
+                onClick={handleExactoClick}
+                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors mb-4"
+              >
+                🎯 Use Exacto! 🎯
+              </button>
+              <p className="text-gray-600 text-sm">Predict the exact score of a match to revive yourself!</p>
+            </div>
+          )}
+
+          {/* Exacto Mode Instructions */}
+          {gameState.exactoMode && (
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">Select a match and predict the exact score to revive yourself</p>
+              <p className="text-gray-500 text-sm mb-4">You cannot predict matches involving teams you previously picked</p>
+            </div>
+          )}
+
           {/* Game Over */}
           {gameState.gameStatus !== 'playing' && !gameState.showGameOverGif && (
             <div className="text-center">
@@ -688,6 +746,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             <p>• <strong>Same Value Continuation:</strong> If only 1 pile remains and the dealt card has the same value, you can continue playing</p>
             <p>• <strong>Four of a Kind Revival:</strong> Get 4 cards of the same value to revive a face-down pile with the card that eliminated it</p>
             <p>• <strong>One Revival Per Value:</strong> Each set of 4 cards of the same value can only be used for revival once</p>
+            <p>• <strong>Exacto Revival:</strong> Eliminated players can predict exact scores to revive themselves (one chance only)</p>
           </div>
         </div>
       </div>

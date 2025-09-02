@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import authOptions from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import EnterResultsForm from './enter-results-form'
 import RealTimeResultsForm from './real-time-results-form'
 import type { Session } from 'next-auth'
@@ -25,8 +26,18 @@ export default async function EnterResultsPage({ params }: EnterResultsPageProps
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Gameweek Results Management</h1>
-        <p className="text-gray-600">Choose how you want to manage gameweek results</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gameweek Results Management</h1>
+            <p className="text-gray-600">Choose how you want to manage gameweek results</p>
+          </div>
+          <Link
+            href={`/competition/${competitionId}`}
+            className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            ← Back
+          </Link>
+        </div>
       </div>
       
       <div className="grid gap-8 lg:grid-cols-2">

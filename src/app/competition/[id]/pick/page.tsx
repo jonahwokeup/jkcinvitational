@@ -96,6 +96,11 @@ export default async function PickPage({ params }: PickPageProps) {
           fixture: true,
         },
       },
+      exactoPredictions: {
+        include: {
+          fixture: true,
+        },
+      },
     },
   })
 
@@ -159,9 +164,17 @@ export default async function PickPage({ params }: PickPageProps) {
   }
 
   // For pick changes, exclude the current gameweek's pick from used teams
-  const usedTeams = entry.picks
+  const usedTeamsFromPicks = entry.picks
     .filter((pick: any) => pick.gameweekId !== nextGameweek.id)
     .map((pick: any) => pick.team)
+
+  // Get teams from Exacto predictions (these count as "used teams")
+  const usedTeamsFromExacto = entry.exactoPredictions
+    .map((prediction: any) => [prediction.fixture.homeTeam, prediction.fixture.awayTeam])
+    .flat()
+
+  // Combine all used teams
+  const usedTeams = [...usedTeamsFromPicks, ...usedTeamsFromExacto]
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import authOptions from '@/lib/auth'
 import Link from 'next/link'
-import ManageFixturesForm from './manage-fixtures-form'
+import ManageExactosForm from './manage-exactos-form'
 
-export default async function ManageFixturesPage({
+export default async function ManageExactosPage({
   params
 }: {
   params: Promise<{ id: string }>
@@ -22,17 +22,24 @@ export default async function ManageFixturesPage({
   }
 
   const { id: competitionId } = await params
-  
+
   const competition = await prisma.competition.findUnique({
     where: { id: competitionId },
     include: {
-      gameweeks: {
+      rounds: {
         include: {
-          fixtures: {
-            orderBy: { kickoff: 'asc' }
+          entries: {
+            include: {
+              user: true,
+              exactoPredictions: {
+                include: {
+                  fixture: true
+                }
+              }
+            }
           }
         },
-        orderBy: { gameweekNumber: 'asc' }
+        orderBy: { roundNumber: 'asc' }
       }
     }
   })
@@ -47,7 +54,7 @@ export default async function ManageFixturesPage({
         <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold text-white">
-              Manage Fixtures - {competition.name}
+              Manage Exactos - {competition.name}
             </h1>
             <Link
               href={`/competition/${competitionId}`}
@@ -56,10 +63,10 @@ export default async function ManageFixturesPage({
               ← Back
             </Link>
           </div>
-          
-          <ManageFixturesForm 
+
+          <ManageExactosForm
             competition={competition}
-            gameweeks={competition.gameweeks}
+            rounds={competition.rounds}
           />
         </div>
       </div>

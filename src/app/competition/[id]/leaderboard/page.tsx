@@ -32,7 +32,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
               fixture: true
             }
           },
-          round: true
+          round: true,
+          exactoPredictions: {
+            include: {
+              fixture: true
+            }
+          }
         },
       },
       gameweeks: {
@@ -84,6 +89,11 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     // Count eliminations (gameweeks where user lost)
     const eliminations = Array.from(gameweekResults.values()).filter(result => result === false).length;
     
+    // Count successful Exactos
+    const successfulExactos = entry.exactoPredictions.filter(prediction => 
+      prediction.isCorrect === true
+    ).length;
+    
     // Check if currently eliminated
     const isEliminated = entry.livesRemaining <= 0;
     
@@ -91,11 +101,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       ...entry,
       calculatedGwsSurvived: gwsSurvived,
       eliminations,
+      successfulExactos,
       isEliminated
     };
   });
 
-  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations
+  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations, then more Exactos
   entriesWithStats.sort((a, b) => {
     // 1. Round Wins (highest first)
     if (a.seasonRoundWins !== b.seasonRoundWins) {
@@ -112,7 +123,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       return a.eliminations - b.eliminations;
     }
     
-    // 4. If still tied, use creation time (earlier entry wins)
+    // 4. Exactos (if tied on all above - more Exactos = better)
+    if (a.successfulExactos !== b.successfulExactos) {
+      return b.successfulExactos - a.successfulExactos;
+    }
+    
+    // 5. If still tied, use creation time (earlier entry wins)
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
@@ -124,12 +140,14 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       const prevEntry = entriesWithStats[index - 1];
       if (prevEntry.seasonRoundWins === entry.seasonRoundWins &&
           prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          prevEntry.eliminations === entry.eliminations) {
+          prevEntry.eliminations === entry.eliminations &&
+          prevEntry.successfulExactos === entry.successfulExactos) {
         // Find the first entry with these same stats
         const firstIndex = entriesWithStats.findIndex(e => 
           e.seasonRoundWins === entry.seasonRoundWins && 
           e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          e.eliminations === entry.eliminations
+          e.eliminations === entry.eliminations &&
+          e.successfulExactos === entry.successfulExactos
         );
         position = firstIndex + 1;
       }
@@ -184,6 +202,9 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Eliminations
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Exactos
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Current Status
@@ -248,6 +269,11 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm text-gray-900">
                           {entry.eliminations}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="text-sm font-medium text-orange-600">
+                          {entry.successfulExactos}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
