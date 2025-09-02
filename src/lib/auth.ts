@@ -18,7 +18,7 @@ export const hasAccessCode = (code: string): boolean => {
 }
 
 // DEBUG: Log environment variables and access codes on startup
-console.log("AUTH_STARTUP_DEBUG", {
+console.log("🚨 AUTH_STARTUP_DEBUG - AUTHENTICATION SYSTEM LOADING 🚨", {
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "SET" : "NOT_SET",
   NEXTAUTH_URL: process.env.NEXTAUTH_URL || "NOT_SET",
   DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT_SET",
@@ -27,6 +27,11 @@ console.log("AUTH_STARTUP_DEBUG", {
   ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
   timestamp: new Date().toISOString()
 })
+
+// Force an error if this runs to prove the file is loaded
+if (typeof window !== 'undefined') {
+  console.log("🚨 AUTH FILE LOADED IN BROWSER - THIS SHOULD NOT HAPPEN 🚨")
+}
 
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",

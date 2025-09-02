@@ -3,6 +3,12 @@ import { Trophy, Users, Calendar, Target } from 'lucide-react'
 import AuthStatus from '@/components/auth-status'
 
 export default function HomePage() {
+  // Debug: Check if this component is loading
+  console.log("🚨 HOMEPAGE COMPONENT LOADING 🚨", {
+    timestamp: new Date().toISOString(),
+    hasAuthStatus: typeof AuthStatus !== 'undefined'
+  })
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700">
       <div className="container mx-auto px-4 py-16">
