@@ -17,6 +17,17 @@ export const hasAccessCode = (code: string): boolean => {
   return Boolean((ACCESS_CODES as Record<string, unknown>)[code])
 }
 
+// DEBUG: Log environment variables and access codes on startup
+console.log("AUTH_STARTUP_DEBUG", {
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "SET" : "NOT_SET",
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "NOT_SET",
+  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT_SET",
+  NODE_ENV: process.env.NODE_ENV,
+  ACCESS_CODES_COUNT: Object.keys(ACCESS_CODES).length,
+  ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
+  timestamp: new Date().toISOString()
+})
+
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
   url: process.env.NEXTAUTH_URL || "http://localhost:3000",
@@ -43,9 +54,22 @@ const authOptions = {
             return null
           }
 
+          console.log("AUTH_DEBUG", { 
+            step: "checking_access_code", 
+            code: credentials.accessCode,
+            codeType: typeof credentials.accessCode,
+            ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
+            ACCESS_CODES_TYPE: typeof ACCESS_CODES
+          })
+          
           const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
           if (!userInfo) {
-            console.log("AUTH_DEBUG", { step: "code_not_found", code: credentials.accessCode })
+            console.log("AUTH_DEBUG", { 
+              step: "code_not_found", 
+              code: credentials.accessCode,
+              availableCodes: Object.keys(ACCESS_CODES),
+              codeExists: credentials.accessCode in ACCESS_CODES
+            })
             return null
           }
           
