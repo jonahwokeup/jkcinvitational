@@ -74,7 +74,37 @@ export async function GET(
     }
 
     // Get teams the user has previously picked in this round
-    const previouslyPickedTeams = userEntry.picks.map(pick => pick.team)
+    // Only count teams from gameweeks where the user actually survived
+    const previouslyPickedTeams = userEntry.picks
+      .filter(pick => {
+        // Only count picks from settled gameweeks where the user survived
+        const gameweek = competition.gameweeks.find(gw => gw.id === pick.gameweekId)
+        if (!gameweek || !gameweek.isSettled) {
+          return false // Skip unsettled gameweeks
+        }
+        
+        // Check if user was eliminated in this gameweek
+        // If they were eliminated, their pick for the next gameweek shouldn't count
+        const nextGameweek = competition.gameweeks.find(gw => 
+          gw.gameweekNumber === gameweek.gameweekNumber + 1
+        )
+        
+        if (nextGameweek && nextGameweek.isSettled) {
+          // Check if user has a pick for the next gameweek
+          const nextPick = userEntry.picks.find(p => p.gameweekId === nextGameweek.id)
+          if (nextPick) {
+            // User made a pick for the next gameweek, so they survived this one
+            return true
+          } else {
+            // User didn't make a pick for the next gameweek, they might have been eliminated
+            return false
+          }
+        }
+        
+        // If no next gameweek or it's not settled, assume they survived
+        return true
+      })
+      .map(pick => pick.team)
 
     // Filter fixtures to exclude those involving previously picked teams
     const availableFixtures = scheduledGameweek.fixtures.filter(fixture => 

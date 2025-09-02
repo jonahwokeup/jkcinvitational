@@ -164,8 +164,41 @@ export default async function PickPage({ params }: PickPageProps) {
   }
 
   // For pick changes, exclude the current gameweek's pick from used teams
+  // Only count teams from gameweeks where the user actually survived
   const usedTeamsFromPicks = entry.picks
-    .filter((pick: any) => pick.gameweekId !== nextGameweek.id)
+    .filter((pick: any) => {
+      // Exclude current gameweek's pick
+      if (pick.gameweekId === nextGameweek.id) {
+        return false
+      }
+      
+      // Only count picks from settled gameweeks where the user survived
+      const gameweek = competition.gameweeks.find((gw: any) => gw.id === pick.gameweekId)
+      if (!gameweek || !gameweek.isSettled) {
+        return false // Skip unsettled gameweeks
+      }
+      
+      // Check if user was eliminated in this gameweek
+      // If they were eliminated, their pick for the next gameweek shouldn't count
+      const nextGameweek = competition.gameweeks.find((gw: any) => 
+        gw.gameweekNumber === gameweek.gameweekNumber + 1
+      )
+      
+      if (nextGameweek && nextGameweek.isSettled) {
+        // Check if user has a pick for the next gameweek
+        const nextPick = entry.picks.find((p: any) => p.gameweekId === nextGameweek.id)
+        if (nextPick) {
+          // User made a pick for the next gameweek, so they survived this one
+          return true
+        } else {
+          // User didn't make a pick for the next gameweek, they might have been eliminated
+          return false
+        }
+      }
+      
+      // If no next gameweek or it's not settled, assume they survived
+      return true
+    })
     .map((pick: any) => pick.team)
 
   // Get teams from Exacto predictions (these count as "used teams")
