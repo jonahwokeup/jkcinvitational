@@ -33,31 +33,43 @@ export async function POST(request: NextRequest) {
     
     console.log("TEST_AUTH_DEBUG", { step: "code_valid", userInfo })
     
-    // Test database connection
-    let user = await prisma.user.findUnique({
-      where: { email: userInfo.email }
-    })
-    
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: userInfo.email,
-          name: userInfo.name
-        }
+    // Test database connection without creating users
+    try {
+      console.log("TEST_AUTH_DEBUG", { step: "testing_db_connection" })
+      
+      // Just test if we can connect to the database
+      await prisma.$connect()
+      console.log("TEST_AUTH_DEBUG", { step: "db_connected" })
+      
+      // Look for existing user without creating
+      const existingUser = await prisma.user.findUnique({
+        where: { email: userInfo.email }
       })
-      console.log("TEST_AUTH_DEBUG", { step: "user_created", userId: user.id })
+      
+      console.log("TEST_AUTH_DEBUG", { step: "user_lookup", found: !!existingUser })
+      
+      return NextResponse.json({ 
+        success: true, 
+        user: existingUser ? { id: existingUser.id, email: existingUser.email, name: existingUser.name } : userInfo,
+        message: "Authentication successful",
+        isNewUser: !existingUser
+      })
+      
+    } catch (dbError) {
+      console.error("TEST_AUTH_DB_ERROR", dbError)
+      return NextResponse.json({ 
+        error: "Database connection failed", 
+        details: String(dbError),
+        step: "database_error"
+      }, { status: 500 })
     }
-    
-    console.log("TEST_AUTH_DEBUG", { step: "success", user })
-    
-    return NextResponse.json({ 
-      success: true, 
-      user: { id: user.id, email: user.email, name: user.name },
-      message: "Authentication successful"
-    })
     
   } catch (error) {
     console.error("TEST_AUTH_ERROR", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Request processing failed", 
+      details: String(error),
+      step: "request_error"
+    }, { status: 500 })
   }
 }
