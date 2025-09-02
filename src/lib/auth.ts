@@ -17,20 +17,7 @@ export const hasAccessCode = (code: string): boolean => {
   return Boolean((ACCESS_CODES as Record<string, unknown>)[code])
 }
 
-// DEBUG: Log environment variables and access codes on startup
-console.log("🚨 AUTH_STARTUP_DEBUG - AUTHENTICATION SYSTEM LOADING 🚨", {
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "SET" : "NOT_SET",
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "NOT_SET",
-  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT_SET",
-  NODE_ENV: process.env.NODE_ENV,
-  ACCESS_CODES_COUNT: Object.keys(ACCESS_CODES).length,
-  ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
-  timestamp: new Date().toISOString()
-})
-
-// Server-side authentication system loading
-
-// DEBUG: Authentication system is loading successfully
+// Authentication system configuration
 
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
@@ -46,55 +33,19 @@ const authOptions = {
       },
       async authorize(credentials) {
         try {
-          // Force a visible error to show this function is being called
-          console.error("🚨 AUTH_FUNCTION_CALLED 🚨", {
-            step: "start", 
-            code: credentials?.accessCode,
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV,
-            hasCredentials: !!credentials,
-            credentialsKeys: credentials ? Object.keys(credentials) : []
-          })
-          
           if (!credentials?.accessCode) {
-            console.error("🚨 NO_CREDENTIALS_ERROR 🚨", { step: "no_credentials" })
             return null
           }
-
-          console.log("AUTH_DEBUG", { 
-            step: "checking_access_code", 
-            code: credentials.accessCode,
-            codeType: typeof credentials.accessCode,
-            ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
-            ACCESS_CODES_TYPE: typeof ACCESS_CODES
-          })
-          
-          console.error("🚨 CHECKING_ACCESS_CODE 🚨", {
-            step: "checking_access_code", 
-            code: credentials.accessCode,
-            codeType: typeof credentials.accessCode,
-            ACCESS_CODES_KEYS: Object.keys(ACCESS_CODES),
-            ACCESS_CODES_TYPE: typeof ACCESS_CODES
-          })
           
           const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
           if (!userInfo) {
-            console.error("🚨 ACCESS_CODE_NOT_FOUND 🚨", { 
-              step: "code_not_found", 
-              code: credentials.accessCode,
-              availableCodes: Object.keys(ACCESS_CODES),
-              codeExists: credentials.accessCode in ACCESS_CODES
-            })
             return null
           }
-          
-          console.log("AUTH_DEBUG", { step: "code_valid", userInfo })
 
           // Get or create user
           let user = await prisma.user.findUnique({
             where: { email: userInfo.email }
           })
-          console.log("AUTH_DEBUG", { step: "find_user", found: Boolean(user), email: userInfo.email })
 
           if (!user) {
             user = await prisma.user.create({
@@ -103,14 +54,12 @@ const authOptions = {
                 name: userInfo.name
               }
             })
-            console.log("AUTH_DEBUG", { step: "create_user", userId: user.id })
           }
 
           // Get the competition (there's only one)
           const competition = await prisma.competition.findFirst({
             where: { name: "JKC Invitational" }
           })
-          console.log("AUTH_DEBUG", { step: "find_competition", found: Boolean(competition) })
 
           if (competition) {
             // Check if user is already in the competition
@@ -120,7 +69,6 @@ const authOptions = {
                 competitionId: competition.id
               }
             })
-            console.log("AUTH_DEBUG", { step: "find_entry", found: Boolean(existingEntry) })
 
             // If not in competition, add them to the competition
             if (!existingEntry) {
@@ -130,7 +78,6 @@ const authOptions = {
                   competitionId: competition.id
                 }
               })
-              console.log("AUTH_DEBUG", { step: "create_entry", userId: user.id })
             }
           }
 
@@ -141,10 +88,8 @@ const authOptions = {
             name: user.name || userInfo.name,
             image: user.image || undefined
           }
-          console.log("AUTH_DEBUG", { step: "success", resultSeen: Boolean(result?.id) })
           return result
         } catch (error) {
-          console.error("AUTH_DEBUG_ERROR", String(error))
           return null
         }
       }
