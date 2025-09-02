@@ -81,6 +81,24 @@ function getSuitColor(suit: string): string {
   return suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black';
 }
 
+// Helper function to check if only one pile remains open
+function hasOnlyOneOpenPile(faceDown: boolean[]): boolean {
+  return faceDown.filter(down => !down).length === 1;
+}
+
+// Helper function to check if there are 4 cards of the same value
+function hasFourOfAKind(grid: (Card | null)[], faceDown: boolean[]): boolean {
+  const valueCounts: { [key: number]: number } = {};
+  
+  grid.forEach((card, index) => {
+    if (card && !faceDown[index]) {
+      valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+    }
+  });
+  
+  return Object.values(valueCounts).some(count => count >= 4);
+}
+
 export default function WhomstPage({ params }: WhomstPageProps) {
   const [competitionId, setCompetitionId] = useState<string>('');
   const [gameState, setGameState] = useState<GameState>({
@@ -184,6 +202,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       dealtCard: nextCard,
       isAnimating: true,
       showPrediction: false,
+      lastDealtCard: nextCard, // Store for potential revival
     }));
 
     // After card appears on side, move it to the target position
@@ -203,22 +222,51 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           selectedCardIndex: null,
           dealtCard: null,
           isAnimating: false,
+          showReviveButton: hasFourOfAKind(newGrid, prev.faceDown),
         }));
       } else {
-        // Incorrect prediction - turn card face down
-        const newFaceDown = [...gameState.faceDown];
-        if (gameState.selectedCardIndex !== null) {
-          newFaceDown[gameState.selectedCardIndex] = true;
-        }
+        // Check if this should allow continuation due to same value and only one pile
+        const onlyOnePile = hasOnlyOneOpenPile(gameState.faceDown);
+        const sameValue = selectedCard.value === nextCard.value;
+        
+        if (onlyOnePile && sameValue) {
+          // Special case: same value with only one pile - allow continuation
+          const newGrid = [...gameState.grid];
+          if (gameState.selectedCardIndex !== null) {
+            newGrid[gameState.selectedCardIndex] = nextCard;
+          }
 
-        setGameState(prev => ({
-          ...prev,
-          deck: newDeck,
-          faceDown: newFaceDown,
-          selectedCardIndex: null,
-          dealtCard: null,
-          isAnimating: false,
-        }));
+          setGameState(prev => ({
+            ...prev,
+            deck: newDeck,
+            grid: newGrid,
+            score: prev.score + 1,
+            selectedCardIndex: null,
+            dealtCard: null,
+            isAnimating: false,
+            showReviveButton: hasFourOfAKind(newGrid, prev.faceDown),
+          }));
+        } else {
+          // Incorrect prediction - turn card face down
+          const newFaceDown = [...gameState.faceDown];
+          const newEliminatedCards = [...gameState.eliminatedCards];
+          
+          if (gameState.selectedCardIndex !== null) {
+            newFaceDown[gameState.selectedCardIndex] = true;
+            newEliminatedCards[gameState.selectedCardIndex] = nextCard; // Store the card that caused elimination
+          }
+
+          setGameState(prev => ({
+            ...prev,
+            deck: newDeck,
+            faceDown: newFaceDown,
+            eliminatedCards: newEliminatedCards,
+            selectedCardIndex: null,
+            dealtCard: null,
+            isAnimating: false,
+            showReviveButton: hasFourOfAKind(prev.grid, newFaceDown),
+          }));
+        }
       }
 
       // Check win/lose conditions
@@ -251,10 +299,53 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     }));
   };
 
+  // Handle pile revival
+  const handleRevivePile = () => {
+    setGameState(prev => ({
+      ...prev,
+      revivalMode: true,
+      showReviveButton: false, // Hide button when entering revival mode
+    }));
+  };
+
+  // Handle selecting a pile to revive
+  const handlePileRevival = (index: number) => {
+    if (gameState.faceDown[index] === false) return;
+
+    const eliminatedCard = gameState.eliminatedCards[index];
+    if (!eliminatedCard) return; // Safety check
+
+    const newFaceDown = [...gameState.faceDown];
+    newFaceDown[index] = false; // Revive the pile
+
+    const newGrid = [...gameState.grid];
+    newGrid[index] = eliminatedCard; // Put the eliminated card back in the revived pile
+
+    setGameState(prev => ({
+      ...prev,
+      grid: newGrid,
+      faceDown: newFaceDown,
+      revivalMode: false,
+      showReviveButton: false, // Button stays hidden after revival is used
+    }));
+  };
+
   const CardComponent = ({ card, index, isFaceDown }: { card: Card | null; index: number; isFaceDown: boolean }) => {
     if (!card) return null;
 
     if (isFaceDown) {
+      // In revival mode, face-down piles can be clicked to revive
+      if (gameState.revivalMode) {
+        return (
+          <button
+            onClick={() => handlePileRevival(index)}
+            className="w-20 h-28 bg-gray-800 rounded-lg border-2 border-blue-400 flex items-center justify-center transform transition-all duration-300 ease-in-out hover:bg-gray-700 hover:border-blue-300"
+          >
+            <div className="text-blue-300 text-sm">🔄</div>
+          </button>
+        );
+      }
+      
       return (
         <div className="w-20 h-28 bg-gray-800 rounded-lg border-2 border-gray-600 flex items-center justify-center transform transition-all duration-300 ease-in-out">
           <div className="text-white text-sm">❌</div>
@@ -464,7 +555,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           )}
 
           {/* Game Controls */}
-          {gameState.gameStatus === 'playing' && !gameState.showPrediction && !gameState.isAnimating && (
+          {gameState.gameStatus === 'playing' && !gameState.showPrediction && !gameState.isAnimating && !gameState.revivalMode && (
             <div className="text-center">
               <p className="text-gray-600 mb-4">Click any card to start the next round</p>
             </div>
@@ -473,6 +564,26 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           {gameState.isAnimating && (
             <div className="text-center">
               <p className="text-gray-600 mb-4">Dealing card...</p>
+            </div>
+          )}
+
+          {/* Revival Mode Instructions */}
+          {gameState.revivalMode && (
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">Select a face-down pile to revive with the card that eliminated it</p>
+            </div>
+          )}
+
+          {/* Revive Pile Button */}
+          {gameState.showReviveButton && !gameState.revivalMode && !gameState.isAnimating && (
+            <div className="text-center">
+              <button
+                onClick={handleRevivePile}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mb-4"
+              >
+                🎉 Revive Pile! 🎉
+              </button>
+              <p className="text-gray-600 text-sm">You have 4 cards of the same value! Choose a face-down pile to revive.</p>
             </div>
           )}
 
@@ -509,6 +620,9 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             <p>• If correct: the new card replaces your chosen card</p>
             <p>• If incorrect: your chosen card turns face down</p>
             <p>• Win by getting through the entire deck, lose if all cards are face down</p>
+            <p className="font-semibold mt-3">Special Rules:</p>
+            <p>• <strong>Same Value Continuation:</strong> If only 1 pile remains and the dealt card has the same value, you can continue playing</p>
+            <p>• <strong>Four of a Kind Revival:</strong> Get 4 cards of the same value to revive a face-down pile with the card that eliminated it</p>
           </div>
         </div>
       </div>
