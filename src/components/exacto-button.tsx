@@ -167,8 +167,8 @@ export default function ExactoButton({ userId, currentUserId, gameweekNumber, co
                 <ul className="text-orange-800 text-sm space-y-1">
                   <li>• Predict the exact score of a match in Gameweek {gameweekNumber}</li>
                   <li>• You cannot predict matches involving teams you previously picked</li>
-                  <li>• If correct, you'll be revived and both teams become unavailable for future picks</li>
-                  <li>• If incorrect, you're permanently out for this round</li>
+                  <li>• If correct, you&apos;ll be revived and both teams become unavailable for future picks</li>
+                  <li>• If incorrect, you&apos;re permanently out for this round</li>
                   <li>• You only get one chance to use Exacto</li>
                 </ul>
               </div>
@@ -202,7 +202,7 @@ export default function ExactoButton({ userId, currentUserId, gameweekNumber, co
                           {/* Previously Picked Teams */}
                           {exactoData.previouslyPickedTeams.length > 0 && (
                             <div className="mb-6">
-                              <h3 className="font-semibold text-gray-900 mb-2">Teams You've Previously Picked:</h3>
+                              <h3 className="font-semibold text-gray-900 mb-2">Teams You&apos;ve Previously Picked:</h3>
                               <div className="flex flex-wrap gap-2">
                                 {exactoData.previouslyPickedTeams.map((team, index) => (
                                   <span
