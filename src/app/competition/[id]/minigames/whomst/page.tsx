@@ -25,6 +25,10 @@ interface GameState {
   showPrediction: boolean;
   dealtCard: Card | null; // Card that's been dealt and is moving to position
   isAnimating: boolean; // Whether a card is currently animating
+  showReviveButton: boolean; // Whether to show the revive pile button
+  revivalMode: boolean; // Whether user is selecting a pile to revive
+  lastDealtCard: Card | null; // Store the last dealt card for revival
+  eliminatedCards: (Card | null)[]; // Store the cards that caused each pile to be eliminated
 }
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
@@ -90,6 +94,10 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     showPrediction: false,
     dealtCard: null,
     isAnimating: false,
+    showReviveButton: false,
+    revivalMode: false,
+    lastDealtCard: null,
+    eliminatedCards: Array(9).fill(null),
   });
 
   useEffect(() => {
@@ -112,6 +120,10 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       showPrediction: false,
       dealtCard: null,
       isAnimating: false,
+      showReviveButton: false,
+      revivalMode: false,
+      lastDealtCard: null,
+      eliminatedCards: Array(9).fill(null),
     });
   };
 
