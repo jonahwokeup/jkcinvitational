@@ -33,6 +33,7 @@ export default function ExactoButton({
   const [awayGoals, setAwayGoals] = useState('')
   const [fixtures, setFixtures] = useState<any[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
+  const [teamsUsed, setTeamsUsed] = useState<string[]>([])
 
   const openModal = async () => {
     if (isSubmitting) return
@@ -44,6 +45,7 @@ export default function ExactoButton({
       
       if (data.success) {
         setFixtures(data.fixtures)
+        setTeamsUsed(data.teamsUsed || [])
         setIsOpen(true)
       } else {
         alert('Failed to load fixtures')
@@ -73,7 +75,8 @@ export default function ExactoButton({
           gameweekId,
           fixtureId: selectedFixture,
           homeGoals: parseInt(homeGoals),
-          awayGoals: parseInt(awayGoals)
+          awayGoals: parseInt(awayGoals),
+          overwrite: true // Always overwrite existing predictions
         }),
       })
 
@@ -170,22 +173,42 @@ export default function ExactoButton({
                 </div>
               )}
 
+              {/* Teams Used Section */}
+              {teamsUsed.length > 0 && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <h4 className="text-sm font-medium text-gray-800 mb-2">Teams Used This Round</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {teamsUsed.map((team) => (
+                      <span key={team} className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded">
+                        {team}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Available Fixtures */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Fixture
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Fixture to Predict
                 </label>
-                <select
-                  value={selectedFixture}
-                  onChange={(e) => setSelectedFixture(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="">Choose a fixture...</option>
+                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                   {fixtures.map((fixture) => (
-                    <option key={fixture.id} value={fixture.id}>
-                      {fixture.homeTeam} vs {fixture.awayTeam}
-                    </option>
+                    <button
+                      key={fixture.id}
+                      onClick={() => setSelectedFixture(fixture.id)}
+                      className={`p-3 text-left border rounded-lg transition-colors ${
+                        selectedFixture === fixture.id
+                          ? 'border-purple-500 bg-purple-50 text-purple-900'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium">
+                        {fixture.homeTeam} vs {fixture.awayTeam}
+                      </div>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

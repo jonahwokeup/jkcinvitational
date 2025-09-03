@@ -345,7 +345,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                   <Trophy className="w-5 h-5 mr-2 text-red-600" />
                   Eliminated ({eliminatedEntries.length})
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {eliminatedEntries.map((entry: any) => {
                     // For eliminated users, show their pick from the gameweek they were eliminated in
                     const eliminatedGameweekPick = entry.eliminatedAtGw ? 
@@ -367,45 +367,41 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     return (
                       <div
                         key={entry.id}
-                        className="bg-red-50 border border-red-200 rounded-lg p-4"
+                        className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div>
-                              <p className="font-medium text-red-900">
-                                {entry.user.name || entry.user.email}
-                              </p>
-                              <p className="text-sm text-red-700">
-                                Eliminated GW {entry.eliminatedAtGw}
-                              </p>
+                        <div>
+                          <p className="font-medium text-red-900">
+                            {entry.user.name || entry.user.email}
+                          </p>
+                          <p className="text-sm text-red-700">
+                            Eliminated GW {entry.eliminatedAtGw}
+                          </p>
+                          {pickToShow && (
+                            <div className="mt-1">
+                              <TeamCrest teamName={pickToShow.team} size="sm" />
                             </div>
-                            {pickToShow && (
-                              <div>
-                                <TeamCrest teamName={pickToShow.team} size="sm" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            {/* Exacto Button - Only show for current user */}
-                            {nextGameweek && entry.user.id === session.user!.id && (
-                              <ExactoButton
-                                entryId={entry.id}
-                                gameweekId={nextGameweek.id}
-                                competitionId={competition.id}
-                                isEliminated={true}
-                                hasExacto={hasExacto}
-                                currentExacto={currentExacto ? {
-                                  fixtureId: currentExacto.fixtureId,
-                                  homeGoals: currentExacto.homeGoals,
-                                  awayGoals: currentExacto.awayGoals
-                                } : undefined}
-                                gameweekNumber={nextGameweek.gameweekNumber}
-                              />
-                            )}
-                            <div className="text-right">
-                              <div className="text-lg font-bold text-red-600">0</div>
-                              <div className="text-xs text-red-600">lives</div>
-                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {/* Exacto Button - Only show for current user */}
+                          {nextGameweek && entry.user.id === session.user!.id && (
+                            <ExactoButton
+                              entryId={entry.id}
+                              gameweekId={nextGameweek.id}
+                              competitionId={competition.id}
+                              isEliminated={true}
+                              hasExacto={hasExacto}
+                              currentExacto={currentExacto ? {
+                                fixtureId: currentExacto.fixtureId,
+                                homeGoals: currentExacto.homeGoals,
+                                awayGoals: currentExacto.awayGoals
+                              } : undefined}
+                              gameweekNumber={nextGameweek.gameweekNumber}
+                            />
+                          )}
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-red-600">0</div>
+                            <div className="text-xs text-red-600">lives</div>
                           </div>
                         </div>
                       </div>

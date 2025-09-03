@@ -64,7 +64,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      fixtures: availableFixtures
+      fixtures: availableFixtures,
+      teamsUsed: usedTeams
     })
 
   } catch (error) {
@@ -88,7 +89,7 @@ export async function POST(
 
     const { id: competitionId } = await params
     const body = await request.json()
-    const { entryId, gameweekId, fixtureId, homeGoals, awayGoals } = body
+    const { entryId, gameweekId, fixtureId, homeGoals, awayGoals, overwrite } = body
 
     if (!entryId || !gameweekId || !fixtureId || homeGoals === undefined || awayGoals === undefined) {
       return NextResponse.json({ 
