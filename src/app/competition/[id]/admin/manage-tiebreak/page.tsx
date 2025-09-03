@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import authOptions from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -220,8 +220,8 @@ export default async function ManageTiebreakPage({ params }: ManageTiebreakPageP
                           <p className="text-yellow-700">
                             {topScorers.length} players tied with score {maxScore}. 
                             {submittedCount === totalCount 
-                              ? ' A new tiebreak stage will be created automatically.'
-                              : ' Waiting for remaining submissions.'
+                              ? &apos; A new tiebreak stage will be created automatically.&apos;
+                              : &apos; Waiting for remaining submissions.&apos;
                             }
                           </p>
                         </div>

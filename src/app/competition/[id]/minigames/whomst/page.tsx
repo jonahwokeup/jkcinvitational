@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Gamepad2, RefreshCw } from 'lucide-react';
 
@@ -101,10 +101,10 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     if (gameState.gameStatus === 'won' || gameState.gameStatus === 'lost') {
       saveScore(gameState.score);
     }
-  }, [gameState.gameStatus, gameState.score, competitionId]);
+  }, [gameState.gameStatus, gameState.score, competitionId, saveScore]);
 
   // Save Whomst score to database
-  const saveScore = async (score: number) => {
+  const saveScore = useCallback(async (score: number) => {
     if (!competitionId) return;
     
     try {
@@ -124,7 +124,7 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     } catch (error) {
       console.error('Error saving score:', error);
     }
-  };
+  }, [competitionId]);
 
   const initializeGame = () => {
     const deck = shuffleDeck(createDeck());
