@@ -9,6 +9,22 @@ import { redirect } from "next/navigation"
 import { getFixtureOutcome, getGoalDifference, isLocked } from "@/lib/utils"
 import type { Session } from 'next-auth'
 
+// Helper function to check if a field exists in a table
+async function checkFieldExists(tableName: string, fieldName: string): Promise<boolean> {
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = ${tableName} 
+      AND column_name = ${fieldName}
+      AND table_schema = 'public'
+    `;
+    return Array.isArray(result) && result.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function joinCompetition(formData: FormData) {
   const session = await getServerSession(authOptions) as Session | null
   if (!session?.user?.id) {
@@ -790,13 +806,20 @@ async function processGameweekResults(gameweekId: string) {
       } else if (survivorsAfterRegular.length >= 2) {
         // Multiple survivors: revive correct Exacto players
         for (const exacto of correctExactos) {
+          const updateData: any = {
+            livesRemaining: 1
+          };
+          
+          if (await checkFieldExists('Entry', 'usedExacto')) {
+            updateData.usedExacto = true;
+          }
+          if (await checkFieldExists('Entry', 'exactoSuccess')) {
+            updateData.exactoSuccess = { increment: 1 };
+          }
+          
           await prisma.entry.update({
             where: { id: exacto.entryId },
-            data: {
-              livesRemaining: 1,
-              usedExacto: true,
-              exactoSuccess: { increment: 1 }
-            }
+            data: updateData
           })
         }
       }
@@ -848,7 +871,7 @@ async function processGameweekResults(gameweekId: string) {
           roundId: newRound.id,
           livesRemaining: gameweek.competition.livesPerRound,
           eliminatedAtGw: null,
-          usedExacto: false
+          ...(await checkFieldExists('Entry', 'usedExacto') ? { usedExacto: false } : {})
         }
       })
     }
@@ -874,15 +897,27 @@ async function initiateWhomstTiebreak(roundId: string, competitionId: string, co
     const deadline = nextGameweek?.lockTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days default
 
     // Update round with tiebreak status
-    await prisma.round.update({
-      where: { id: roundId },
-      data: {
-        tiebreakStatus: 'pending',
-        tiebreakType: 'whomst',
-        tiebreakStage: 1,
-        tiebreakDeadline: deadline
-      }
-    })
+    const updateData: any = {};
+    
+    if (await checkFieldExists('Round', 'tiebreakStatus')) {
+      updateData.tiebreakStatus = 'pending';
+    }
+    if (await checkFieldExists('Round', 'tiebreakType')) {
+      updateData.tiebreakType = 'whomst';
+    }
+    if (await checkFieldExists('Round', 'tiebreakStage')) {
+      updateData.tiebreakStage = 1;
+    }
+    if (await checkFieldExists('Round', 'tiebreakDeadline')) {
+      updateData.tiebreakDeadline = deadline;
+    }
+    
+    if (Object.keys(updateData).length > 0) {
+      await prisma.round.update({
+        where: { id: roundId },
+        data: updateData
+      })
+    }
 
     // Get all entries eliminated in this GW (regular picks)
     const eliminatedEntries = await prisma.entry.findMany({
@@ -908,15 +943,17 @@ async function initiateWhomstTiebreak(roundId: string, competitionId: string, co
       }
     }
 
-    // Create TiebreakParticipant records
-    for (const participant of participants) {
-      await prisma.tiebreakParticipant.create({
-        data: {
-          roundId,
-          entryId: participant.id,
-          stage: 1
-        }
-      })
+    // Create TiebreakParticipant records (only if table exists)
+    if (await checkFieldExists('TiebreakParticipant', 'id')) {
+      for (const participant of participants) {
+        await prisma.tiebreakParticipant.create({
+          data: {
+            roundId,
+            entryId: participant.id,
+            stage: 1
+          }
+        })
+      }
     }
 
     console.log(`Whomst tiebreak initiated for ${participants.length} participants`)
