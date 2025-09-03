@@ -3,7 +3,7 @@ import authOptions from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
+import { formatDate, formatTimeUntil, isBeforeLock, isTiebreakEnabled } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
@@ -64,6 +64,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
   }
 
   const currentRound = competition.rounds[0]
+  const tiebreakEnabled = isTiebreakEnabled()
   
   // Debug logging for gameweek detection
   console.log('🔍 Competition Page Debug:');
@@ -179,6 +180,14 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
         {/* Current Round Status */}
         {currentRound && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            {tiebreakEnabled && (
+              <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-900">
+                Whomst tiebreak feature enabled for development. API: {" "}
+                <Link href={`/api/competition/${competition.id}/tiebreak`} className="underline">
+                  /api/competition/{competition.id}/tiebreak
+                </Link>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold text-gray-900">
                 Round {currentRound.roundNumber}
