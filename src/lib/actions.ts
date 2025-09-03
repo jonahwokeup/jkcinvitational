@@ -782,7 +782,7 @@ async function processGameweekResults(gameweekId: string) {
             roundId: newRound.id,
             livesRemaining: gameweek.competition.livesPerRound,
             eliminatedAtGw: null,
-            usedExacto: false
+            ...(await checkFieldExists('Entry', 'usedExacto') ? { usedExacto: false } : {})
           }
         })
 
