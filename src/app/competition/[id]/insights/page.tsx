@@ -37,6 +37,12 @@ export default async function InsightsPage({ params }: PageProps) {
             },
           },
           round: true,
+          exactoPredictions: {
+            include: {
+              gameweek: true,
+              fixture: true,
+            },
+          },
         },
       },
       gameweeks: {
@@ -311,11 +317,43 @@ export default async function InsightsPage({ params }: PageProps) {
     });
   }
 
+  // Process Exacto data - only show successful predictions from settled gameweeks
+  const exactoData = competition.entries.flatMap(entry => 
+    entry.exactoPredictions
+      .filter(prediction => {
+        const fixture = prediction.fixture;
+        const gameweek = prediction.gameweek;
+        
+        // Only include predictions from settled gameweeks
+        if (!gameweek.isSettled) return false;
+        
+        // Only include successful predictions (matching actual results)
+        if (!fixture || fixture.homeGoals === null || fixture.awayGoals === null) return false;
+        
+        return prediction.homeGoals === fixture.homeGoals && 
+               prediction.awayGoals === fixture.awayGoals;
+      })
+      .map(prediction => ({
+        user: entry.user,
+        gameweek: prediction.gameweek,
+        fixture: prediction.fixture,
+        prediction: {
+          homeGoals: prediction.homeGoals,
+          awayGoals: prediction.awayGoals,
+        },
+        actual: {
+          homeGoals: prediction.fixture.homeGoals,
+          awayGoals: prediction.fixture.awayGoals,
+        },
+      }))
+  ).sort((a, b) => b.gameweek.gameweekNumber - a.gameweek.gameweekNumber);
+
   return (
     <InsightsClient
       competition={competition}
       teamStatsArray={teamStatsArray}
       leaderboardHistory={leaderboardHistory}
+      exactoData={exactoData}
     />
   );
 }

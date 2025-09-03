@@ -10,6 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Whomst tiebreak support ---
+enum TiebreakStatus {
+  none
+  pending
+  in_progress
+  completed
+}
+
+enum TiebreakType {
+  none
+  whomst
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -77,6 +90,7 @@ model Competition {
   entries               Entry[]
   gameweeks             Gameweek[]
   rounds                Round[]
+  whomstScores          WhomstScore[]
   
   seasonChampion        Entry?        @relation("SeasonChampion", fields: [seasonChampionEntryId], references: [id])
 }
@@ -94,6 +108,14 @@ model Round {
   entries         Entry[]
   winner          Entry?       @relation("RoundWinner", fields: [winnerEntryId], references: [id])
   
+  // Tiebreak metadata
+  tiebreakStatus   TiebreakStatus @default(none)
+  tiebreakType     TiebreakType   @default(none)
+  tiebreakStage    Int            @default(0) // 0 = not started; >=1 = iteration
+  tiebreakDeadline DateTime?
+  tiebreakParticipants TiebreakParticipant[]
+  whomstScores     WhomstScore[]
+  
   @@unique([competitionId, roundNumber])
 }
 
@@ -108,6 +130,8 @@ model Entry {
   seasonGwsSurvived     Int          @default(0)
   seasonMissedPicks     Int          @default(0)
   firstRoundWinAt       DateTime?
+  usedExacto            Boolean      @default(false)
+  exactoSuccess         Int          @default(0)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   
@@ -117,6 +141,9 @@ model Entry {
   picks                 Pick[]
   wonRounds            Round[]      @relation("RoundWinner")
   seasonChampionOf      Competition[] @relation("SeasonChampion")
+  tiebreakParticipants  TiebreakParticipant[]
+  exactoPredictions    ExactoPrediction[]
+  whomstScores         WhomstScore[]
   
   @@unique([userId, competitionId, roundId])
 }
@@ -134,6 +161,7 @@ model Gameweek {
   competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   fixtures      Fixture[]
   picks         Pick[]
+  exactoPredictions ExactoPrediction[]
   
   @@unique([competitionId, gameweekNumber])
 }
@@ -152,6 +180,7 @@ model Fixture {
   
   gameweek      Gameweek      @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
   picks         Pick[]
+  exactoPredictions ExactoPrediction[]
 }
 
 model Pick {
@@ -168,4 +197,57 @@ model Pick {
   fixture    Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
   
   @@unique([entryId, gameweekId])
+}
+
+model TiebreakParticipant {
+  id         String   @id @default(cuid())
+  roundId    String
+  entryId    String
+  stage      Int      @default(1) // which tiebreak iteration
+  score      Int?
+  attemptUsed Boolean @default(false)
+  submittedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  entry      Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, entryId, stage])
+}
+
+model ExactoPrediction {
+  id            String   @id @default(cuid())
+  entryId       String
+  gameweekId    String
+  fixtureId     String
+  homeGoals     Int
+  awayGoals     Int
+  isCorrect     Boolean?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  gameweek      Gameweek @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  fixture       Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, gameweekId])
+}
+
+model WhomstScore {
+  id            String   @id @default(cuid())
+  entryId       String
+  competitionId String
+  score         Int
+  gameType      String   @default("fun") // "fun" or "tiebreak"
+  roundId       String?  // null for fun games, set for tiebreak games
+  stage         Int?     // null for fun games, set for tiebreak games
+  createdAt     DateTime @default(now())
+
+  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  round         Round?   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, score])
+  @@index([entryId, score])
 }

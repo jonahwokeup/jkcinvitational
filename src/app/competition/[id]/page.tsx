@@ -2,11 +2,13 @@ import { getServerSession } from 'next-auth'
 import authOptions from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
+
 import Link from 'next/link'
 import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
+import ExactoButton from '@/components/exacto-button'
 import Image from 'next/image'
 import type { Session } from 'next-auth'
 
@@ -37,6 +39,13 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                   gameweek: true,
                   fixture: true,
                 },
+              },
+              exactoPredictions: {
+                include: {
+                  gameweek: true,
+                  fixture: true
+                },
+                orderBy: { gameweek: { gameweekNumber: 'desc' } }
               },
             },
           },
@@ -346,31 +355,166 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     // Fallback to last pick if we can't find the eliminated gameweek pick
                     const pickToShow = eliminatedGameweekPick || entry.picks[entry.picks.length - 1]
                     
+                    // Check if user has an Exacto prediction for the next gameweek
+                    const hasExacto = entry.exactoPredictions && entry.exactoPredictions.length > 0
+                    const currentExacto = hasExacto ? entry.exactoPredictions[0] : null
+                    
+                    // Get the next gameweek for Exacto
+                    const nextGameweek = competition.gameweeks.find((gw: any) => 
+                      gw.gameweekNumber > (currentGameweek?.gameweekNumber || 0) && 
+                      !gw.isSettled
+                    )
+                    
                     return (
                       <div
                         key={entry.id}
-                        className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
+                        className="relative p-3 bg-red-50 border border-red-200 rounded-lg"
                       >
-                        <div>
-                          <p className="font-medium text-red-900">
-                            {entry.user.name || entry.user.email}
-                          </p>
-                          <p className="text-sm text-red-700">
-                            Eliminated GW {entry.eliminatedAtGw}
-                          </p>
-                          {pickToShow && (
-                            <div className="mt-1">
-                              <TeamCrest teamName={pickToShow.team} size="sm" />
-                            </div>
-                          )}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-red-900">
+                              {entry.user.name || entry.user.email}
+                            </p>
+                            <p className="text-sm text-red-700">
+                              Eliminated GW {entry.eliminatedAtGw}
+                            </p>
+                            {pickToShow && (
+                              <div className="mt-1">
+                                <TeamCrest teamName={pickToShow.team} size="sm" />
+                              </div>
+                            )}
+                            {/* Exacto Submitted Indicator */}
+                            {hasExacto && (
+                              <div className="mt-1">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  🎯 Exacto Submitted
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-lg font-bold text-red-600">0</div>
+                            <div className="text-xs text-red-600">lives</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-red-600">0</div>
-                          <div className="text-xs text-red-600">lives</div>
-                        </div>
+                        {/* Exacto Button - Positioned at bottom right */}
+                        {nextGameweek && entry.user.id === session.user!.id && (
+                          <div className="absolute bottom-2 right-2">
+                            <ExactoButton
+                              entryId={entry.id}
+                              gameweekId={nextGameweek.id}
+                              competitionId={competition.id}
+                              isEliminated={true}
+                              hasExacto={hasExacto}
+                              currentExacto={currentExacto ? {
+                                fixtureId: currentExacto.fixtureId,
+                                homeGoals: currentExacto.homeGoals,
+                                awayGoals: currentExacto.awayGoals
+                              } : undefined}
+                              gameweekNumber={nextGameweek.gameweekNumber}
+                            />
+                          </div>
+                        )}
                       </div>
                     )
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Tiebreak Section */}
+            {currentRound && (currentRound as any).tiebreakStatus && ((currentRound as any).tiebreakStatus === 'pending' || (currentRound as any).tiebreakStatus === 'in_progress') && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <Gamepad2 className="w-5 h-5 mr-2 text-purple-600" />
+                  Whomst Tiebreak - Stage {(currentRound as any).tiebreakStage}
+                </h3>
+                
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                  <p className="text-purple-800 mb-3">
+                    All survivors have been eliminated! The round will be decided by a Whomst tiebreak.
+                  </p>
+                  
+                  {(currentRound as any).tiebreakDeadline && (
+                    <p className="text-sm text-purple-600 mb-3">
+                      Deadline: {new Date((currentRound as any).tiebreakDeadline).toLocaleString()}
+                    </p>
+                  )}
+
+                  {/* Check if current user is a participant */}
+                  {(() => {
+                    const userEntry = currentRound.entries.find((entry: any) => entry.user.id === session.user!.id)
+                    if (!userEntry) return null
+                    
+                    const userParticipant = (currentRound as any).tiebreakParticipants?.find(
+                      (p: any) => p.entryId === userEntry.id
+                    )
+                    
+                    if (!userParticipant) return null
+                    
+                    if (userParticipant.attemptUsed) {
+                      return (
+                        <div className="bg-green-100 border border-green-300 rounded-lg p-3">
+                          <p className="text-green-800 font-medium">
+                            ✅ You have submitted your tiebreak score: {userParticipant.score}
+                          </p>
+                        </div>
+                      )
+                    } else {
+                      return (
+                        <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
+                          <p className="text-blue-800 mb-3">
+                            You need to play Whomst to determine the round winner!
+                          </p>
+                          <Link
+                            href={`/competition/${competition.id}/tiebreak`}
+                            className="inline-block px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+                          >
+                            Play Whomst Tiebreak
+                          </Link>
+                        </div>
+                      )
+                    }
+                  })()}
+                </div>
+
+                {/* Show all participants and their status */}
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {(currentRound as any).tiebreakParticipants?.map((participant: any) => (
+                    <div
+                      key={participant.id}
+                      className={`p-3 rounded-lg border ${
+                        participant.attemptUsed
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-yellow-50 border-yellow-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`font-medium ${
+                            participant.attemptUsed ? 'text-green-900' : 'text-yellow-900'
+                          }`}>
+                            {participant.entry.user.name || participant.entry.user.email}
+                          </p>
+                          <p className={`text-sm ${
+                            participant.attemptUsed ? 'text-green-700' : 'text-yellow-700'
+                          }`}>
+                            {participant.attemptUsed 
+                              ? `Score: ${participant.score}` 
+                              : 'Pending submission'
+                            }
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-lg font-bold ${
+                            participant.attemptUsed ? 'text-green-600' : 'text-yellow-600'
+                          }`}>
+                            {participant.attemptUsed ? '✅' : '⏳'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -456,6 +600,26 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <h3 className="text-lg font-semibold text-teal-900 mb-1">Manage Picks</h3>
                 <p className="text-teal-700">View and edit user picks</p>
               </Link>
+
+              <Link
+                href={`/competition/${competition.id}/admin/manage-exactos`}
+                className="block p-6 bg-orange-50 rounded-lg shadow-sm border border-orange-200 hover:shadow-md transition-shadow text-center"
+              >
+                <Target className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="text-lg font-semibold text-orange-900 mb-1">Manage Exactos</h3>
+                <p className="text-orange-700">View and monitor Exacto predictions</p>
+              </Link>
+
+              {currentRound && (currentRound as any).tiebreakStatus && ((currentRound as any).tiebreakStatus === 'pending' || (currentRound as any).tiebreakStatus === 'in_progress') && (
+                <Link
+                  href={`/competition/${competition.id}/admin/manage-tiebreak`}
+                  className="block p-6 bg-purple-50 rounded-lg shadow-sm border border-purple-200 hover:shadow-md transition-shadow text-center"
+                >
+                  <Gamepad2 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold text-purple-900 mb-1">Manage Tiebreak</h3>
+                  <p className="text-purple-700">Monitor Whomst tiebreak progress</p>
+                </Link>
+              )}
             </div>
           </div>
         )}

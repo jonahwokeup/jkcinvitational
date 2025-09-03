@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Gamepad2, RefreshCw } from 'lucide-react';
 
@@ -25,6 +25,9 @@ interface GameState {
   showPrediction: boolean;
   dealtCard: Card | null; // Card that's been dealt and is moving to position
   isAnimating: boolean; // Whether a card is currently animating
+  showReviveButton: boolean; // Whether to show the revive pile button
+  reviveUsed: Set<number>; // Track which card values have been used for revival
+  showReviveSelection: boolean; // Whether to show pile selection for revival
 }
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
@@ -77,6 +80,32 @@ function getSuitColor(suit: string): string {
   return suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-black';
 }
 
+// Helper function to check for four-of-a-kind
+function checkForFourOfAKind(grid: (Card | null)[], faceDown: boolean[]): number | null {
+  const faceUpCards = grid.filter((card, index) => card && !faceDown[index]);
+  const valueCounts = new Map<number, number>();
+  
+  faceUpCards.forEach(card => {
+    if (card) {
+      valueCounts.set(card.value, (valueCounts.get(card.value) || 0) + 1);
+    }
+  });
+  
+  // Find the first value that appears 4 times
+  for (const [value, count] of valueCounts.entries()) {
+    if (count === 4) {
+      return value;
+    }
+  }
+  
+  return null;
+}
+
+// Helper function to get face-down pile indices
+function getFaceDownPiles(faceDown: boolean[]): number[] {
+  return faceDown.map((down, index) => down ? index : -1).filter(index => index !== -1);
+}
+
 export default function WhomstPage({ params }: WhomstPageProps) {
   const [competitionId, setCompetitionId] = useState<string>('');
   const [gameState, setGameState] = useState<GameState>({
@@ -90,11 +119,44 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     showPrediction: false,
     dealtCard: null,
     isAnimating: false,
+    showReviveButton: false,
+    reviveUsed: new Set(),
+    showReviveSelection: false,
   });
 
   useEffect(() => {
     params.then(({ id }) => setCompetitionId(id));
   }, [params]);
+
+  // Save Whomst score to database
+  const saveScore = useCallback(async (score: number) => {
+    if (!competitionId) return;
+    
+    try {
+      const response = await fetch(`/api/competition/${competitionId}/whomst-score`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ score }),
+      });
+
+      if (response.ok) {
+        console.log('Score saved successfully:', score);
+      } else {
+        console.error('Failed to save score');
+      }
+    } catch (error) {
+      console.error('Error saving score:', error);
+    }
+  }, [competitionId]);
+
+  // Save score when game ends
+  useEffect(() => {
+    if (gameState.gameStatus === 'won' || gameState.gameStatus === 'lost') {
+      saveScore(gameState.score);
+    }
+  }, [gameState.gameStatus, gameState.score, competitionId, saveScore]);
 
   const initializeGame = () => {
     const deck = shuffleDeck(createDeck());
@@ -112,6 +174,9 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       showPrediction: false,
       dealtCard: null,
       isAnimating: false,
+      showReviveButton: false,
+      reviveUsed: new Set(),
+      showReviveSelection: false,
     });
   };
 
@@ -122,7 +187,20 @@ export default function WhomstPage({ params }: WhomstPageProps) {
   }, [competitionId]);
 
   const handleCardClick = (index: number) => {
-    if (gameState.gameStatus !== 'playing' || gameState.faceDown[index]) {
+    if (gameState.gameStatus !== 'playing') {
+      return;
+    }
+    
+    // If in revive selection mode, handle pile revival
+    if (gameState.showReviveSelection) {
+      if (gameState.faceDown[index]) {
+        handlePileSelection(index);
+      }
+      return;
+    }
+    
+    // Normal game mode - only allow clicking face-up cards
+    if (gameState.faceDown[index]) {
       return;
     }
     
@@ -176,33 +254,62 @@ export default function WhomstPage({ params }: WhomstPageProps) {
 
     // After card appears on side, move it to the target position
     setTimeout(() => {
-      if (isCorrect) {
-        // Correct prediction - replace the card
+      if (gameState.selectedCardIndex === null) return; // Safety check
+      
+      // Check for same value continuation (only if prediction was wrong)
+      const faceUpCount = gameState.faceDown.filter(down => !down).length;
+      const isSameValue = selectedCard.value === nextCard.value;
+      const canContinue = !isCorrect && isSameValue && faceUpCount === 1;
+      
+      if (isCorrect || canContinue) {
+        // Correct prediction OR same value continuation - replace the card
         const newGrid = [...gameState.grid];
         newGrid[gameState.selectedCardIndex] = nextCard;
 
-        setGameState(prev => ({
-          ...prev,
-          deck: newDeck,
-          grid: newGrid,
-          score: prev.score + 1,
-          selectedCardIndex: null,
-          dealtCard: null,
-          isAnimating: false,
-        }));
+        setGameState(prev => {
+          const newState = {
+            ...prev,
+            deck: newDeck,
+            grid: newGrid,
+            score: prev.score + 1,
+            selectedCardIndex: null,
+            dealtCard: null,
+            isAnimating: false,
+            showReviveButton: false, // Reset revive button
+          };
+
+          // Check for four-of-a-kind after card replacement
+          const fourOfAKindValue = checkForFourOfAKind(newState.grid, newState.faceDown);
+          if (fourOfAKindValue && !newState.reviveUsed.has(fourOfAKindValue)) {
+            newState.showReviveButton = true;
+          }
+
+          return newState;
+        });
       } else {
         // Incorrect prediction - turn card face down
         const newFaceDown = [...gameState.faceDown];
         newFaceDown[gameState.selectedCardIndex] = true;
 
-        setGameState(prev => ({
-          ...prev,
-          deck: newDeck,
-          faceDown: newFaceDown,
-          selectedCardIndex: null,
-          dealtCard: null,
-          isAnimating: false,
-        }));
+        setGameState(prev => {
+          const newState = {
+            ...prev,
+            deck: newDeck,
+            faceDown: newFaceDown,
+            selectedCardIndex: null,
+            dealtCard: null,
+            isAnimating: false,
+            showReviveButton: false, // Reset revive button
+          };
+
+          // Check for four-of-a-kind after card goes face down
+          const fourOfAKindValue = checkForFourOfAKind(newState.grid, newState.faceDown);
+          if (fourOfAKindValue && !newState.reviveUsed.has(fourOfAKindValue)) {
+            newState.showReviveButton = true;
+          }
+
+          return newState;
+        });
       }
 
       // Check win/lose conditions
@@ -234,14 +341,81 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     }));
   };
 
+  // Handle revive pile button click
+  const handleRevivePile = () => {
+    setGameState(prev => ({
+      ...prev,
+      showReviveSelection: true,
+      showReviveButton: false,
+    }));
+  };
+
+  // Handle pile selection for revival
+  const handlePileSelection = (pileIndex: number) => {
+    const faceDownPiles = getFaceDownPiles(gameState.faceDown);
+    if (!faceDownPiles.includes(pileIndex)) return;
+
+    // Get the four-of-a-kind value
+    const fourOfAKindValue = checkForFourOfAKind(gameState.grid, gameState.faceDown);
+    if (!fourOfAKindValue) return;
+
+    // Revive the selected pile with the last dealt card (or a new card from deck)
+    const newDeck = [...gameState.deck];
+    const reviveCard = newDeck.shift();
+    
+    if (!reviveCard) return;
+
+    const newGrid = [...gameState.grid];
+    const newFaceDown = [...gameState.faceDown];
+    
+    // Revive the pile
+    newGrid[pileIndex] = reviveCard;
+    newFaceDown[pileIndex] = false;
+
+    setGameState(prev => {
+      const newReviveUsed = new Set(prev.reviveUsed);
+      newReviveUsed.add(fourOfAKindValue);
+
+      return {
+        ...prev,
+        deck: newDeck,
+        grid: newGrid,
+        faceDown: newFaceDown,
+        showReviveSelection: false,
+        reviveUsed: newReviveUsed,
+        score: prev.score + 1,
+      };
+    });
+  };
+
+  // Cancel revive pile selection
+  const cancelReviveSelection = () => {
+    setGameState(prev => ({
+      ...prev,
+      showReviveSelection: false,
+      showReviveButton: true, // Show button again
+    }));
+  };
+
   const CardComponent = ({ card, index, isFaceDown }: { card: Card | null; index: number; isFaceDown: boolean }) => {
     if (!card) return null;
 
     if (isFaceDown) {
+      const isReviveMode = gameState.showReviveSelection;
       return (
-        <div className="w-20 h-28 bg-gray-800 rounded-lg border-2 border-gray-600 flex items-center justify-center transform transition-all duration-300 ease-in-out">
-          <div className="text-white text-sm">❌</div>
-        </div>
+        <button
+          onClick={() => handleCardClick(index)}
+          className={`w-20 h-28 rounded-lg border-2 flex items-center justify-center transform transition-all duration-300 ease-in-out ${
+            isReviveMode 
+              ? 'bg-yellow-200 border-yellow-500 hover:bg-yellow-300 hover:border-yellow-600 cursor-pointer' 
+              : 'bg-gray-800 border-gray-600 cursor-not-allowed'
+          }`}
+          disabled={!isReviveMode}
+        >
+          <div className={`text-sm ${isReviveMode ? 'text-yellow-800' : 'text-white'}`}>
+            {isReviveMode ? '🔄' : '❌'}
+          </div>
+        </button>
       );
     }
 
@@ -459,9 +633,55 @@ export default function WhomstPage({ params }: WhomstPageProps) {
                         </div>
                       )}
 
+                      {/* Revive Pile Button */}
+                      {gameState.showReviveButton && gameState.gameStatus === 'playing' && (
+                        <div className="text-center mb-6">
+                          <div className="bg-purple-100 border border-purple-300 rounded-lg p-4 mb-4">
+                            <p className="text-purple-800 font-medium mb-3">
+                              🎉 Four of a Kind Detected! 🎉
+                            </p>
+                            <p className="text-purple-700 text-sm mb-4">
+                              You can revive one face-down pile!
+                            </p>
+                            <button
+                              onClick={handleRevivePile}
+                              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                            >
+                              Revive Pile
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Revive Pile Selection */}
+                      {gameState.showReviveSelection && gameState.gameStatus === 'playing' && (
+                        <div className="text-center mb-6">
+                          <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 mb-4">
+                            <p className="text-yellow-800 font-medium mb-3">
+                              Click on any face-down pile to revive it:
+                            </p>
+                            <button
+                              onClick={cancelReviveSelection}
+                              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                            >
+                              Cancel Revival
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
           {/* Game Over */}
           {gameState.gameStatus !== 'playing' && (
             <div className="text-center">
+              {gameState.gameStatus === 'lost' && (
+                <div className="mb-4">
+                  <img 
+                    src="/thatsthat.GIF" 
+                    alt="Game Over" 
+                    className="w-32 h-32 mx-auto mb-4"
+                  />
+                </div>
+              )}
               <div className={`text-3xl font-bold mb-4 ${
                 gameState.gameStatus === 'won' ? 'text-green-600' : 'text-red-600'
               }`}>
@@ -491,7 +711,11 @@ export default function WhomstPage({ params }: WhomstPageProps) {
             <p>• Predict if the next card will be higher or lower than your chosen card</p>
             <p>• If correct: the new card replaces your chosen card</p>
             <p>• If incorrect: your chosen card turns face down</p>
+            <p>• <strong>Same Value Continuation:</strong> If only one pile remains and you get the same value, you can continue!</p>
+            <p>• <strong>Four of a Kind Revival:</strong> Get 4 cards of the same value face-up to revive a face-down pile</p>
+            <p>• Each set of 4 cards can only be used for revival once</p>
             <p>• Win by getting through the entire deck, lose if all cards are face down</p>
+            <p>• <strong>Ace is the highest card (value 14)</strong></p>
           </div>
         </div>
       </div>
