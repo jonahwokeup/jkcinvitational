@@ -7,6 +7,7 @@ import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
 import CompetitionHeader from '@/components/competition-header'
 import TeamCrest from '@/components/team-crest'
+import ExactoButton from '@/components/exacto-button'
 import Image from 'next/image'
 import type { Session } from 'next-auth'
 
@@ -37,6 +38,18 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                   gameweek: true,
                   fixture: true,
                 },
+              },
+              exactoPredictions: {
+                include: {
+                  gameweek: true,
+                  fixture: {
+                    include: {
+                      homeTeam: true,
+                      awayTeam: true
+                    }
+                  }
+                },
+                orderBy: { gameweek: { gameweekNumber: 'desc' } }
               },
             },
           },
@@ -337,7 +350,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                   <Trophy className="w-5 h-5 mr-2 text-red-600" />
                   Eliminated ({eliminatedEntries.length})
                 </h3>
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-4">
                   {eliminatedEntries.map((entry: any) => {
                     // For eliminated users, show their pick from the gameweek they were eliminated in
                     const eliminatedGameweekPick = entry.eliminatedAtGw ? 
@@ -346,28 +359,72 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     // Fallback to last pick if we can't find the eliminated gameweek pick
                     const pickToShow = eliminatedGameweekPick || entry.picks[entry.picks.length - 1]
                     
+                    // Check if user has an Exacto prediction for the next gameweek
+                    const hasExacto = entry.exactoPredictions && entry.exactoPredictions.length > 0
+                    const currentExacto = hasExacto ? entry.exactoPredictions[0] : null
+                    
+                    // Get the next gameweek for Exacto
+                    const nextGameweek = competition.gameweeks.find((gw: any) => 
+                      gw.gameweekNumber > (currentGameweek?.gameweekNumber || 0) && 
+                      !gw.isSettled
+                    )
+                    
                     return (
                       <div
                         key={entry.id}
-                        className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
+                        className="bg-red-50 border border-red-200 rounded-lg p-4"
                       >
-                        <div>
-                          <p className="font-medium text-red-900">
-                            {entry.user.name || entry.user.email}
-                          </p>
-                          <p className="text-sm text-red-700">
-                            Eliminated GW {entry.eliminatedAtGw}
-                          </p>
-                          {pickToShow && (
-                            <div className="mt-1">
-                              <TeamCrest teamName={pickToShow.team} size="sm" />
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div>
+                              <p className="font-medium text-red-900">
+                                {entry.user.name || entry.user.email}
+                              </p>
+                              <p className="text-sm text-red-700">
+                                Eliminated GW {entry.eliminatedAtGw}
+                              </p>
                             </div>
-                          )}
+                            {pickToShow && (
+                              <div>
+                                <TeamCrest teamName={pickToShow.team} size="sm" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-red-600">0</div>
+                            <div className="text-xs text-red-600">lives</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-red-600">0</div>
-                          <div className="text-xs text-red-600">lives</div>
-                        </div>
+                        
+                        {/* Exacto Section */}
+                        {nextGameweek && (
+                          <div className="border-t border-red-200 pt-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-red-800">
+                                  Exacto for GW {nextGameweek.gameweekNumber}
+                                </p>
+                                {hasExacto && currentExacto && (
+                                  <p className="text-xs text-red-600">
+                                    Current: {currentExacto.homeGoals} - {currentExacto.awayGoals}
+                                  </p>
+                                )}
+                              </div>
+                              <ExactoButton
+                                entryId={entry.id}
+                                gameweekId={nextGameweek.id}
+                                competitionId={competition.id}
+                                isEliminated={true}
+                                hasExacto={hasExacto}
+                                currentExacto={currentExacto ? {
+                                  fixtureId: currentExacto.fixtureId,
+                                  homeGoals: currentExacto.homeGoals,
+                                  awayGoals: currentExacto.awayGoals
+                                } : undefined}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -552,6 +609,15 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <Users className="w-8 h-8 text-teal-600 mx-auto mb-2" />
                 <h3 className="text-lg font-semibold text-teal-900 mb-1">Manage Picks</h3>
                 <p className="text-teal-700">View and edit user picks</p>
+              </Link>
+
+              <Link
+                href={`/competition/${competition.id}/admin/manage-exactos`}
+                className="block p-6 bg-orange-50 rounded-lg shadow-sm border border-orange-200 hover:shadow-md transition-shadow text-center"
+              >
+                <Target className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="text-lg font-semibold text-orange-900 mb-1">Manage Exactos</h3>
+                <p className="text-orange-700">View and monitor Exacto predictions</p>
               </Link>
 
               {currentRound && (currentRound as any).tiebreakStatus && ((currentRound as any).tiebreakStatus === 'pending' || (currentRound as any).tiebreakStatus === 'in_progress') && (

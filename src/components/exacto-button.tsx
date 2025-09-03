@@ -1,0 +1,229 @@
+"use client"
+
+import { useState } from 'react'
+import { Target, X } from 'lucide-react'
+
+interface ExactoButtonProps {
+  entryId: string
+  gameweekId: string
+  competitionId: string
+  isEliminated: boolean
+  hasExacto: boolean
+  currentExacto?: {
+    fixtureId: string
+    homeGoals: number
+    awayGoals: number
+  }
+}
+
+export default function ExactoButton({ 
+  entryId, 
+  gameweekId, 
+  competitionId, 
+  isEliminated, 
+  hasExacto,
+  currentExacto 
+}: ExactoButtonProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedFixture, setSelectedFixture] = useState('')
+  const [homeGoals, setHomeGoals] = useState('')
+  const [awayGoals, setAwayGoals] = useState('')
+  const [fixtures, setFixtures] = useState<any[]>([])
+  const [showSuccess, setShowSuccess] = useState(false)
+
+  const openModal = async () => {
+    if (isSubmitting) return
+    
+    try {
+      // Fetch available fixtures for the next gameweek
+      const response = await fetch(`/api/competition/${competitionId}/exacto?gameweekId=${gameweekId}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setFixtures(data.fixtures)
+        setIsOpen(true)
+      } else {
+        alert('Failed to load fixtures')
+      }
+    } catch (error) {
+      console.error('Error loading fixtures:', error)
+      alert('Error loading fixtures')
+    }
+  }
+
+  const submitExacto = async () => {
+    if (!selectedFixture || !homeGoals || !awayGoals) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    setIsSubmitting(true)
+    
+    try {
+      const response = await fetch(`/api/competition/${competitionId}/exacto`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          entryId,
+          gameweekId,
+          fixtureId: selectedFixture,
+          homeGoals: parseInt(homeGoals),
+          awayGoals: parseInt(awayGoals)
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        setShowSuccess(true)
+        setTimeout(() => {
+          setShowSuccess(false)
+          setIsOpen(false)
+          // Reset form
+          setSelectedFixture('')
+          setHomeGoals('')
+          setAwayGoals('')
+        }, 3000)
+      } else {
+        alert(data.error || 'Failed to submit Exacto prediction')
+      }
+    } catch (error) {
+      console.error('Error submitting Exacto:', error)
+      alert('Error submitting Exacto prediction')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!isEliminated) return null
+
+  return (
+    <>
+      <button
+        onClick={openModal}
+        disabled={isSubmitting}
+        className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+      >
+        <Target className="w-4 h-4" />
+        <span>{hasExacto ? 'Change Exacto' : 'Submit Exacto'}</span>
+      </button>
+
+      {/* Success Message */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+            <img 
+              src="/thatsthat.GIF" 
+              alt="Success" 
+              className="w-32 h-32 mx-auto mb-4"
+            />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Submission successful
+            </h3>
+            <p className="text-gray-600">
+              This is gonna hit so hard if you nail it...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {hasExacto ? 'Change Exacto Prediction' : 'Submit Exacto Prediction'}
+              </h3>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {currentExacto && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <h4 className="text-sm font-medium text-blue-900 mb-1">
+                  Current Exacto Prediction:
+                </h4>
+                <p className="text-sm text-blue-700">
+                  {currentExacto.homeGoals} - {currentExacto.awayGoals}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Fixture
+                </label>
+                <select
+                  value={selectedFixture}
+                  onChange={(e) => setSelectedFixture(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Choose a fixture...</option>
+                  {fixtures.map((fixture) => (
+                    <option key={fixture.id} value={fixture.id}>
+                      {fixture.homeTeam.name} vs {fixture.awayTeam.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Home Goals
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={homeGoals}
+                    onChange={(e) => setHomeGoals(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Away Goals
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={awayGoals}
+                    onChange={(e) => setAwayGoals(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitExacto}
+                disabled={isSubmitting || !selectedFixture || !homeGoals || !awayGoals}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Exacto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
