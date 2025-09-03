@@ -52,9 +52,21 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'User entry not found' }, { status: 404 })
     }
 
-    // Get teams already used in this round
+    // Get teams already used in this round (only from gameweeks where user survived)
     const usedTeams = userEntry.picks
-      .filter(pick => pick.gameweek.competitionId === competitionId)
+      .filter(pick => {
+        // Only include picks from gameweeks where the user actually survived
+        // If user was eliminated in GW3, don't include their GW4 pick in "teams used"
+        const pickGameweek = pick.gameweek
+        const eliminatedInGw = userEntry.eliminatedAtGw
+        
+        // If user was eliminated, only include picks from gameweeks before elimination
+        if (eliminatedInGw && pickGameweek.gameweekNumber >= eliminatedInGw) {
+          return false
+        }
+        
+        return pick.gameweek.competitionId === competitionId
+      })
       .map(pick => pick.team)
 
     // Filter out fixtures involving teams already used

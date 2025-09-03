@@ -34,6 +34,7 @@ export default function ExactoButton({
   const [fixtures, setFixtures] = useState<any[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
   const [teamsUsed, setTeamsUsed] = useState<string[]>([])
+  const [currentPrediction, setCurrentPrediction] = useState<any>(null)
 
   const openModal = async () => {
     if (isSubmitting) return
@@ -46,6 +47,7 @@ export default function ExactoButton({
       if (data.success) {
         setFixtures(data.fixtures)
         setTeamsUsed(data.teamsUsed || [])
+        setCurrentPrediction(currentExacto)
         setIsOpen(true)
       } else {
         alert('Failed to load fixtures')
@@ -84,6 +86,13 @@ export default function ExactoButton({
       
       if (data.success) {
         setShowSuccess(true)
+        // Update the current prediction display
+        const updatedPrediction = {
+          fixtureId: selectedFixture,
+          homeGoals: parseInt(homeGoals),
+          awayGoals: parseInt(awayGoals)
+        }
+        setCurrentPrediction(updatedPrediction)
         setTimeout(() => {
           setShowSuccess(false)
           setIsOpen(false)
@@ -126,11 +135,8 @@ export default function ExactoButton({
               className="w-32 h-32 mx-auto mb-4"
             />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Submission successful
+              Nice! This is gonna hit so hard if you nail it...
             </h3>
-            <p className="text-gray-600">
-              This is gonna hit so hard if you nail it...
-            </p>
           </div>
         </div>
       )}
@@ -164,14 +170,18 @@ export default function ExactoButton({
 
             <div className="space-y-4">
               {/* Current Exacto Prediction */}
-              {hasExacto && currentExacto && (
+              {(hasExacto && currentExacto) || currentPrediction ? (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                   <h4 className="text-sm font-medium text-purple-800 mb-2">Current Exacto Prediction</h4>
                   <p className="text-sm text-purple-700">
-                    {fixtures.find(f => f.id === currentExacto.fixtureId)?.homeTeam} {currentExacto.homeGoals} - {currentExacto.awayGoals} {fixtures.find(f => f.id === currentExacto.fixtureId)?.awayTeam}
+                    {(() => {
+                      const prediction = currentPrediction || currentExacto
+                      const fixture = fixtures.find(f => f.id === prediction.fixtureId)
+                      return `${fixture?.homeTeam} ${prediction.homeGoals} - ${prediction.awayGoals} ${fixture?.awayTeam}`
+                    })()}
                   </p>
                 </div>
-              )}
+              ) : null}
 
               {/* Teams Used Section */}
               {teamsUsed.length > 0 && (
