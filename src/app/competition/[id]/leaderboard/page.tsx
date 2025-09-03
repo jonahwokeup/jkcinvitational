@@ -37,6 +37,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
             orderBy: {
               score: 'desc'
             }
+          },
+          exactoPredictions: {
+            include: {
+              gameweek: true,
+              fixture: true
+            }
           }
         },
       },
@@ -117,7 +123,30 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       return a.eliminations - b.eliminations;
     }
     
-    // 4. If still tied, use creation time (earlier entry wins)
+    // 4. Exactos (if tied on all above - more exactos = better)
+    const aExactos = a.exactoPredictions?.filter(prediction => {
+      const fixture = prediction.fixture
+      return fixture && 
+             fixture.homeGoals !== null && 
+             fixture.awayGoals !== null &&
+             prediction.homeGoals === fixture.homeGoals &&
+             prediction.awayGoals === fixture.awayGoals
+    }).length || 0;
+    
+    const bExactos = b.exactoPredictions?.filter(prediction => {
+      const fixture = prediction.fixture
+      return fixture && 
+             fixture.homeGoals !== null && 
+             fixture.awayGoals !== null &&
+             prediction.homeGoals === fixture.homeGoals &&
+             prediction.awayGoals === fixture.awayGoals
+    }).length || 0;
+    
+    if (aExactos !== bExactos) {
+      return bExactos - aExactos;
+    }
+    
+    // 5. If still tied, use creation time (earlier entry wins)
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
@@ -127,14 +156,44 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     
     if (index > 0) {
       const prevEntry = entriesWithStats[index - 1];
+      const prevExactos = prevEntry.exactoPredictions?.filter(prediction => {
+        const fixture = prediction.fixture
+        return fixture && 
+               fixture.homeGoals !== null && 
+               fixture.awayGoals !== null &&
+               prediction.homeGoals === fixture.homeGoals &&
+               prediction.awayGoals === fixture.awayGoals
+      }).length || 0;
+      
+      const entryExactos = entry.exactoPredictions?.filter(prediction => {
+        const fixture = prediction.fixture
+        return fixture && 
+               fixture.homeGoals !== null && 
+               fixture.awayGoals !== null &&
+               prediction.homeGoals === fixture.homeGoals &&
+               prediction.awayGoals === fixture.awayGoals
+      }).length || 0;
+      
       if (prevEntry.seasonRoundWins === entry.seasonRoundWins &&
           prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          prevEntry.eliminations === entry.eliminations) {
+          prevEntry.eliminations === entry.eliminations &&
+          prevExactos === entryExactos) {
         // Find the first entry with these same stats
-        const firstIndex = entriesWithStats.findIndex(e => 
-          e.seasonRoundWins === entry.seasonRoundWins && 
-          e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          e.eliminations === entry.eliminations
+        const firstIndex = entriesWithStats.findIndex(e => {
+          const eExactos = e.exactoPredictions?.filter(prediction => {
+            const fixture = prediction.fixture
+            return fixture && 
+                   fixture.homeGoals !== null && 
+                   fixture.awayGoals !== null &&
+                   prediction.homeGoals === fixture.homeGoals &&
+                   prediction.awayGoals === fixture.awayGoals
+          }).length || 0;
+          
+          return e.seasonRoundWins === entry.seasonRoundWins && 
+                 e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
+                 e.eliminations === entry.eliminations &&
+                 eExactos === entryExactos
+        }
         );
         position = firstIndex + 1;
       }
@@ -189,6 +248,9 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Eliminations
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Exactos
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Current Status
@@ -253,6 +315,19 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm text-gray-900">
                           {entry.eliminations}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="text-sm text-gray-900">
+                          {entry.exactoPredictions?.filter(prediction => {
+                            // Count only successful exacto predictions
+                            const fixture = prediction.fixture
+                            return fixture && 
+                                   fixture.homeGoals !== null && 
+                                   fixture.awayGoals !== null &&
+                                   prediction.homeGoals === fixture.homeGoals &&
+                                   prediction.awayGoals === fixture.awayGoals
+                          }).length || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
