@@ -11,6 +11,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Whomst Tiebreak support additions ---
+
+enum TiebreakStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -95,7 +104,38 @@ model Round {
   entries         Entry[]
   winner          Entry?       @relation("RoundWinner", fields: [winnerEntryId], references: [id])
   
+  // Tiebreak support
+  tiebreakStatus  TiebreakStatus @default(PENDING)
+  tiebreaks       Tiebreak[]
+  
   @@unique([competitionId, roundNumber])
+}
+
+model Tiebreak {
+  id        String   @id @default(cuid())
+  roundId   String
+  stage     Int      @default(1) // 1 = initial tiebreak, 2 = replay among top ties, etc.
+  status    TiebreakStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  round     Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participants TiebreakParticipant[]
+}
+
+model TiebreakParticipant {
+  id           String   @id @default(cuid())
+  tiebreakId   String
+  entryId      String
+  attemptUsed  Boolean  @default(false)
+  score        Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tiebreak     Tiebreak @relation(fields: [tiebreakId], references: [id], onDelete: Cascade)
+  entry        Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([tiebreakId, entryId])
 }
 
 model Entry {
@@ -119,6 +159,7 @@ model Entry {
   round                 Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   picks                 Pick[]
   exactoPredictions     ExactoPrediction[]
+  tiebreakParticipations TiebreakParticipant[]
   wonRounds            Round[]      @relation("RoundWinner")
   seasonChampionOf      Competition[] @relation("SeasonChampion")
   
