@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 // POST: Submit fun Whomst score from minigames
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid score' }, { status: 400 })
     }
 
-    const competitionId = params.id
+    const { id: competitionId } = await params
 
     // Get user's current entry for this competition
     const userEntry = await prisma.entry.findFirst({

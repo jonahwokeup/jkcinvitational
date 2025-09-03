@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 // GET: Fetch tiebreak state for a competition
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const competitionId = params.id
+    const { id: competitionId } = await params
 
     // Get current round with tiebreak info
     const currentRound = await prisma.round.findFirst({
@@ -82,7 +82,7 @@ export async function GET(
 // POST: Submit Whomst tiebreak score
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -96,7 +96,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid score' }, { status: 400 })
     }
 
-    const competitionId = params.id
+    const { id: competitionId } = await params
 
     // Get current round
     const currentRound = await prisma.round.findFirst({
