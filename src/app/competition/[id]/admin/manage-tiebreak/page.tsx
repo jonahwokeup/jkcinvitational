@@ -220,8 +220,8 @@ export default async function ManageTiebreakPage({ params }: ManageTiebreakPageP
                           <p className="text-yellow-700">
                             {topScorers.length} players tied with score {maxScore}. 
                             {submittedCount === totalCount 
-                              ? &apos; A new tiebreak stage will be created automatically.&apos;
-                              : &apos; Waiting for remaining submissions.&apos;
+                              ? ' A new tiebreak stage will be created automatically.'
+                              : ' Waiting for remaining submissions.'
                             }
                           </p>
                         </div>
