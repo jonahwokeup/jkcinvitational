@@ -42,12 +42,33 @@ export default async function DashboardPage() {
   // Get next gameweek for each competition
   const competitionsWithNextGameweek = await Promise.all(
     entries.map(async (entry) => {
-      const nextGameweek = await prisma.gameweek.findFirst({
+      // Get all gameweeks for this competition
+      const allGameweeks = await prisma.gameweek.findMany({
         where: {
           competitionId: entry.competitionId,
-          lockTime: { gt: new Date() },
         },
-        orderBy: { lockTime: 'asc' },
+        include: {
+          fixtures: true
+        },
+        orderBy: { gameweekNumber: 'asc' },
+      })
+
+      // Find the next gameweek that hasn't started yet
+      const nextGameweek = allGameweeks.find(gw => {
+        // Gameweek hasn't settled
+        if (gw.isSettled) return false
+        
+        // Check if any fixtures have started (kickoff time has passed)
+        const hasStartedFixtures = gw.fixtures && gw.fixtures.some(fixture => 
+          new Date(fixture.kickoff) < new Date()
+        )
+        
+        // Check if lock time has passed
+        const isLocked = !isBeforeLock(gw.lockTime)
+        
+        // If either fixtures have started OR lock time has passed, this gameweek is current/in progress
+        // We want the NEXT gameweek after this one
+        return !hasStartedFixtures && !isLocked
       })
 
       return {
