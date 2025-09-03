@@ -58,6 +58,45 @@ export default function ExactoButton({
     }
   }
 
+  const revokeExacto = async () => {
+    if (!confirm('Are you sure you want to revoke your Exacto prediction? This action cannot be undone.')) {
+      return
+    }
+
+    setIsSubmitting(true)
+    
+    try {
+      const response = await fetch(`/api/competition/${competitionId}/exacto`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          entryId,
+          gameweekId
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        setCurrentPrediction(null)
+        setIsOpen(false)
+        // Reset form
+        setSelectedFixture('')
+        setHomeGoals('')
+        setAwayGoals('')
+      } else {
+        alert(data.error || 'Failed to revoke Exacto prediction')
+      }
+    } catch (error) {
+      console.error('Error revoking Exacto:', error)
+      alert('Failed to revoke Exacto prediction')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const submitExacto = async () => {
     if (!selectedFixture || !homeGoals || !awayGoals) {
       alert('Please fill in all fields')
@@ -157,16 +196,7 @@ export default function ExactoButton({
               </button>
             </div>
 
-            {currentExacto && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <h4 className="text-sm font-medium text-blue-900 mb-1">
-                  Current Exacto Prediction:
-                </h4>
-                <p className="text-sm text-blue-700">
-                  {currentExacto.homeGoals} - {currentExacto.awayGoals}
-                </p>
-              </div>
-            )}
+
 
             <div className="space-y-4">
               {/* Current Exacto Prediction */}
@@ -251,20 +281,35 @@ export default function ExactoButton({
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitExacto}
-                disabled={isSubmitting || !selectedFixture || !homeGoals || !awayGoals}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Exacto'}
-              </button>
+            <div className="flex justify-between items-center mt-6">
+              {/* Revoke Exacto Button - Only show if user has an existing prediction */}
+              {(hasExacto && currentExacto) || currentPrediction ? (
+                <button
+                  onClick={revokeExacto}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-red-100 hover:bg-red-200 disabled:bg-gray-100 text-red-700 font-medium rounded-lg transition-colors"
+                >
+                  {isSubmitting ? 'Revoking...' : 'Revoke Exacto'}
+                </button>
+              ) : (
+                <div></div>
+              )}
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitExacto}
+                  disabled={isSubmitting || !selectedFixture || !homeGoals || !awayGoals}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Exacto'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -52,7 +52,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'User entry not found' }, { status: 404 })
     }
 
-    // Get teams already used in this round (only from gameweeks where user survived)
+    // Get teams already used in this round (including losing picks, but only from gameweeks where user survived)
     const usedTeams = userEntry.picks
       .filter(pick => {
         // Only include picks from gameweeks where the user actually survived
@@ -189,6 +189,89 @@ export async function POST(
 
   } catch (error) {
     console.error('Error submitting Exacto prediction:', error)
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Internal server error' 
+    }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const { id: competitionId } = await params
+    const body = await request.json()
+    const { entryId, gameweekId } = body
+
+    if (!entryId || !gameweekId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      }, { status: 400 })
+    }
+
+    // Verify the entry belongs to the current user
+    const entry = await prisma.entry.findFirst({
+      where: {
+        id: entryId,
+        userId: session.user.id,
+        competitionId
+      }
+    })
+
+    if (!entry) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Entry not found or access denied' 
+      }, { status: 404 })
+    }
+
+    // Check if the gameweek is locked (picks can't be changed)
+    const gameweek = await prisma.gameweek.findUnique({
+      where: { id: gameweekId }
+    })
+
+    if (!gameweek) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Gameweek not found' 
+      }, { status: 404 })
+    }
+
+    // Check if the gameweek is locked (first fixture has started)
+    const firstFixture = await prisma.fixture.findFirst({
+      where: { gameweekId },
+      orderBy: { kickoff: 'asc' }
+    })
+
+    if (firstFixture && new Date(firstFixture.kickoff) <= new Date()) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Exacto submissions are locked - first fixture has started' 
+      }, { status: 400 })
+    }
+
+    // Delete the Exacto prediction
+    await prisma.exactoPrediction.deleteMany({
+      where: {
+        entryId,
+        gameweekId
+      }
+    })
+
+    return NextResponse.json({
+      success: true
+    })
+
+  } catch (error) {
+    console.error('Error revoking Exacto prediction:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 
