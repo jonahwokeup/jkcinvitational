@@ -206,6 +206,8 @@ export default function WhomstPage({ params }: WhomstPageProps) {
 
     // After card appears on side, move it to the target position
     setTimeout(() => {
+      if (gameState.selectedCardIndex === null) return; // Safety check
+      
       if (isCorrect) {
         // Correct prediction - replace the card
         const newGrid = [...gameState.grid];
