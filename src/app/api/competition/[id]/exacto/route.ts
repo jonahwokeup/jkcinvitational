@@ -61,7 +61,8 @@ export async function GET(
         const eliminatedInGw = userEntry.eliminatedAtGw
         
         // If user was eliminated, only include picks from gameweeks before elimination
-        if (eliminatedInGw && pickGameweek.gameweekNumber >= eliminatedInGw) {
+        // But include the pick from the gameweek they were eliminated in
+        if (eliminatedInGw && pickGameweek.gameweekNumber > eliminatedInGw) {
           return false
         }
         

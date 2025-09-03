@@ -15,6 +15,7 @@ interface ExactoButtonProps {
     awayGoals: number
   }
   gameweekNumber?: number
+  onExactoChange?: () => void
 }
 
 export default function ExactoButton({ 
@@ -24,7 +25,8 @@ export default function ExactoButton({
   isEliminated, 
   hasExacto, 
   currentExacto,
-  gameweekNumber 
+  gameweekNumber,
+  onExactoChange 
 }: ExactoButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,6 +49,7 @@ export default function ExactoButton({
       if (data.success) {
         setFixtures(data.fixtures)
         setTeamsUsed(data.teamsUsed || [])
+        // Always use the current exacto from props when opening modal
         setCurrentPrediction(currentExacto)
         setIsOpen(true)
       } else {
@@ -81,6 +84,10 @@ export default function ExactoButton({
       
       if (data.success) {
         setCurrentPrediction(null)
+        // Notify parent component to refresh data
+        if (onExactoChange) {
+          onExactoChange()
+        }
         setIsOpen(false)
         // Reset form
         setSelectedFixture('')
@@ -132,6 +139,10 @@ export default function ExactoButton({
           awayGoals: parseInt(awayGoals)
         }
         setCurrentPrediction(updatedPrediction)
+        // Notify parent component to refresh data
+        if (onExactoChange) {
+          onExactoChange()
+        }
         setTimeout(() => {
           setShowSuccess(false)
           setIsOpen(false)

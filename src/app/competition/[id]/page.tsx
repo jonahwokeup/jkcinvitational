@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import authOptions from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { formatDate, formatTimeUntil, isBeforeLock } from '@/lib/utils'
 import { Trophy, Users, Clock, Calendar, Target, LogOut, Settings, BarChart3, Gamepad2 } from 'lucide-react'
@@ -162,6 +163,9 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
       </div>
     )
   }
+
+  // Revalidate the page to refresh data
+  revalidatePath(`/competition/${competitionId}`)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -405,6 +409,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                                 awayGoals: currentExacto.awayGoals
                               } : undefined}
                               gameweekNumber={nextGameweek.gameweekNumber}
+                              onExactoChange={() => window.location.reload()}
                             />
                           )}
                           <div className="text-right">
