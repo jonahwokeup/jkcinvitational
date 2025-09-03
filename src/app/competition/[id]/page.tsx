@@ -40,15 +40,6 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
               },
             },
           },
-          tiebreakParticipants: {
-            include: {
-              entry: {
-                include: {
-                  user: true
-                }
-              }
-            }
-          }
         },
       },
       gameweeks: {
@@ -385,11 +376,11 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
             )}
 
             {/* Tiebreak Section */}
-            {currentRound && (currentRound.tiebreakStatus === 'pending' || currentRound.tiebreakStatus === 'in_progress') && (
+            {currentRound && (currentRound as any).tiebreakStatus && ((currentRound as any).tiebreakStatus === 'pending' || (currentRound as any).tiebreakStatus === 'in_progress') && (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                   <Gamepad2 className="w-5 h-5 mr-2 text-purple-600" />
-                  Whomst Tiebreak - Stage {currentRound.tiebreakStage}
+                  Whomst Tiebreak - Stage {(currentRound as any).tiebreakStage}
                 </h3>
                 
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
@@ -397,9 +388,9 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     All survivors have been eliminated! The round will be decided by a Whomst tiebreak.
                   </p>
                   
-                  {currentRound.tiebreakDeadline && (
+                  {(currentRound as any).tiebreakDeadline && (
                     <p className="text-sm text-purple-600 mb-3">
-                      Deadline: {new Date(currentRound.tiebreakDeadline).toLocaleString()}
+                      Deadline: {new Date((currentRound as any).tiebreakDeadline).toLocaleString()}
                     </p>
                   )}
 
@@ -408,7 +399,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     const userEntry = currentRound.entries.find((entry: any) => entry.user.id === session.user!.id)
                     if (!userEntry) return null
                     
-                    const userParticipant = currentRound.tiebreakParticipants.find(
+                    const userParticipant = (currentRound as any).tiebreakParticipants?.find(
                       (p: any) => p.entryId === userEntry.id
                     )
                     
@@ -442,7 +433,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
 
                 {/* Show all participants and their status */}
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {currentRound.tiebreakParticipants.map((participant: any) => (
+                  {(currentRound as any).tiebreakParticipants?.map((participant: any) => (
                     <div
                       key={participant.id}
                       className={`p-3 rounded-lg border ${
@@ -563,7 +554,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                 <p className="text-teal-700">View and edit user picks</p>
               </Link>
 
-              {currentRound && (currentRound.tiebreakStatus === 'pending' || currentRound.tiebreakStatus === 'in_progress') && (
+              {currentRound && (currentRound as any).tiebreakStatus && ((currentRound as any).tiebreakStatus === 'pending' || (currentRound as any).tiebreakStatus === 'in_progress') && (
                 <Link
                   href={`/competition/${competition.id}/admin/manage-tiebreak`}
                   className="block p-6 bg-purple-50 rounded-lg shadow-sm border border-purple-200 hover:shadow-md transition-shadow text-center"
