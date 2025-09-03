@@ -240,7 +240,7 @@ export default async function ManageTiebreakPage({ params }: ManageTiebreakPageP
         <h3 className="text-lg font-semibold text-gray-900 mb-3">Admin Actions</h3>
         <div className="space-y-2 text-sm text-gray-600">
           <p>• Tiebreak will automatically conclude when all participants submit</p>
-          <p>• If there's a tie, a new stage will be created for tied participants only</p>
+          <p>• If there&apos;s a tie, a new stage will be created for tied participants only</p>
           <p>• The deadline is set to the next gameweek lock time</p>
           <p>• Round winner will be determined automatically based on highest score</p>
         </div>
