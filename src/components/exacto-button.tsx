@@ -170,7 +170,7 @@ export default function ExactoButton({
                   <option value="">Choose a fixture...</option>
                   {fixtures.map((fixture) => (
                     <option key={fixture.id} value={fixture.id}>
-                      {fixture.homeTeam.name} vs {fixture.awayTeam.name}
+                      {fixture.homeTeam} vs {fixture.awayTeam}
                     </option>
                   ))}
                 </select>

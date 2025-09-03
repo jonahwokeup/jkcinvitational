@@ -28,12 +28,7 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
           exactoPredictions: {
             include: {
               gameweek: true,
-              fixture: {
-                include: {
-                  homeTeam: true,
-                  awayTeam: true
-                }
-              }
+                    fixture: true
             },
             orderBy: { gameweek: { gameweekNumber: 'desc' } }
           }
@@ -92,12 +87,7 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
         }
       },
       gameweek: true,
-      fixture: {
-        include: {
-          homeTeam: true,
-          awayTeam: true
-        }
-      }
+      fixture: true
     },
     orderBy: [
       { gameweek: { gameweekNumber: 'desc' } },
@@ -206,7 +196,7 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
                           <div className="text-center">
                             <p className="text-sm text-gray-600">Predicted</p>
                             <p className="font-semibold text-gray-900">
-                              {prediction.fixture.homeTeam.name} {prediction.homeGoals} - {prediction.awayGoals} {prediction.fixture.awayTeam.name}
+                              {prediction.fixture.homeTeam} {prediction.homeGoals} - {prediction.awayGoals} {prediction.fixture.awayTeam}
                             </p>
                           </div>
                           

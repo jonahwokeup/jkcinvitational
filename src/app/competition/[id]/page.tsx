@@ -42,12 +42,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
               exactoPredictions: {
                 include: {
                   gameweek: true,
-                  fixture: {
-                    include: {
-                      homeTeam: true,
-                      awayTeam: true
-                    }
-                  }
+                  fixture: true
                 },
                 orderBy: { gameweek: { gameweekNumber: 'desc' } }
               },

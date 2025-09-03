@@ -25,12 +25,7 @@ export async function GET(
     const gameweek = await prisma.gameweek.findUnique({
       where: { id: gameweekId },
       include: {
-        fixtures: {
-          include: {
-            homeTeam: true,
-            awayTeam: true
-          }
-        }
+        fixtures: true
       }
     })
 
