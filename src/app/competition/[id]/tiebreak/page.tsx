@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import WhomstTiebreak from '@/components/whomst-tiebreak'
 
 interface TiebreakPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function TiebreakPage({ params }: TiebreakPageProps) {
@@ -15,7 +15,7 @@ export default async function TiebreakPage({ params }: TiebreakPageProps) {
     redirect('/auth/signin')
   }
 
-  const competitionId = params.id
+  const { id: competitionId } = await params
 
   // Get current round with tiebreak info
   const currentRound = await prisma.round.findFirst({
