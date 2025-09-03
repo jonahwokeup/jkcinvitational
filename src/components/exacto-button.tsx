@@ -105,10 +105,10 @@ export default function ExactoButton({
       <button
         onClick={openModal}
         disabled={isSubmitting}
-        className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+        className="flex items-center space-x-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 disabled:bg-gray-100 text-purple-700 text-xs font-medium rounded transition-colors"
       >
-        <Target className="w-4 h-4" />
-        <span>{hasExacto ? 'Change Exacto' : 'Submit Exacto'}</span>
+        <span>🎯</span>
+        <span>{hasExacto ? 'Change' : 'Submit'}</span>
       </button>
 
       {/* Success Message */}
@@ -179,7 +179,7 @@ export default function ExactoButton({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Home Goals
+                    {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.homeTeam : 'Home Team'} Goals
                   </label>
                   <input
                     type="number"
@@ -192,7 +192,7 @@ export default function ExactoButton({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Away Goals
+                    {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.awayTeam : 'Away Team'} Goals
                   </label>
                   <input
                     type="number"

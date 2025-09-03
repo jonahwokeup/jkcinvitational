@@ -391,8 +391,8 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                           </div>
                         </div>
                         
-                        {/* Exacto Section */}
-                        {nextGameweek && (
+                        {/* Exacto Section - Only show for current user */}
+                        {nextGameweek && entry.user.id === session.user!.id && (
                           <div className="border-t border-red-200 pt-3">
                             <div className="flex items-center justify-between">
                               <div>

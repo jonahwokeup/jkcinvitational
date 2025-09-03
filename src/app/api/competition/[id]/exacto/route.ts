@@ -33,9 +33,38 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Gameweek not found' }, { status: 404 })
     }
 
+    // Get user's entry to check teams already used
+    const userEntry = await prisma.entry.findFirst({
+      where: {
+        userId: session.user.id,
+        competitionId
+      },
+      include: {
+        picks: {
+          include: {
+            gameweek: true
+          }
+        }
+      }
+    })
+
+    if (!userEntry) {
+      return NextResponse.json({ success: false, error: 'User entry not found' }, { status: 404 })
+    }
+
+    // Get teams already used in this round
+    const usedTeams = userEntry.picks
+      .filter(pick => pick.gameweek.competitionId === competitionId)
+      .map(pick => pick.team)
+
+    // Filter out fixtures involving teams already used
+    const availableFixtures = gameweek.fixtures.filter(fixture => 
+      !usedTeams.includes(fixture.homeTeam) && !usedTeams.includes(fixture.awayTeam)
+    )
+
     return NextResponse.json({
       success: true,
-      fixtures: gameweek.fixtures
+      fixtures: availableFixtures
     })
 
   } catch (error) {
