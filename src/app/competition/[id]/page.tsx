@@ -391,28 +391,27 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-red-600">0</div>
+                          <div className="text-xs text-red-600">lives</div>
                           {/* Exacto Button - Only show for current user */}
                           {nextGameweek && entry.user.id === session.user!.id && (
-                            <ExactoButton
-                              entryId={entry.id}
-                              gameweekId={nextGameweek.id}
-                              competitionId={competition.id}
-                              isEliminated={true}
-                              hasExacto={hasExacto}
-                              currentExacto={currentExacto ? {
-                                fixtureId: currentExacto.fixtureId,
-                                homeGoals: currentExacto.homeGoals,
-                                awayGoals: currentExacto.awayGoals
-                              } : undefined}
-                              gameweekNumber={nextGameweek.gameweekNumber}
-
-                            />
+                            <div className="mt-2">
+                              <ExactoButton
+                                entryId={entry.id}
+                                gameweekId={nextGameweek.id}
+                                competitionId={competition.id}
+                                isEliminated={true}
+                                hasExacto={hasExacto}
+                                currentExacto={currentExacto ? {
+                                  fixtureId: currentExacto.fixtureId,
+                                  homeGoals: currentExacto.homeGoals,
+                                  awayGoals: currentExacto.awayGoals
+                                } : undefined}
+                                gameweekNumber={nextGameweek.gameweekNumber}
+                              />
+                            </div>
                           )}
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-red-600">0</div>
-                            <div className="text-xs text-red-600">lives</div>
-                          </div>
                         </div>
                       </div>
                     )

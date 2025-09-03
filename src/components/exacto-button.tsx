@@ -86,6 +86,7 @@ export default function ExactoButton({
       const data = await response.json()
       
       if (data.success) {
+        console.log('✅ Exacto revoked successfully, showing success message')
         setSuccessMessage('Exacto Revoked. Save it for later ;)')
         setShowSuccess(true)
         setCurrentPrediction(null)
@@ -141,6 +142,7 @@ export default function ExactoButton({
       const data = await response.json()
       
       if (data.success) {
+        console.log('✅ Exacto submitted successfully, showing success message')
         setSuccessMessage('Exacto submitted. This is gonna hit so hard if you nail it...')
         setShowSuccess(true)
         // Update the current prediction display
@@ -190,7 +192,8 @@ export default function ExactoButton({
 
       {/* Success Message */}
       {showSuccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        console.log('🎉 Rendering success modal with message:', successMessage),
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
           <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
             <img 
               src="/thatsthat.GIF" 
