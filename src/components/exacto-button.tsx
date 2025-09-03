@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Target, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface ExactoButtonProps {
   entryId: string
@@ -28,6 +29,7 @@ export default function ExactoButton({
   gameweekNumber,
   onExactoChange 
 }: ExactoButtonProps) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedFixture, setSelectedFixture] = useState('')
@@ -93,6 +95,8 @@ export default function ExactoButton({
         setSelectedFixture('')
         setHomeGoals('')
         setAwayGoals('')
+        // Refresh the page to show updated data
+        router.refresh()
       } else {
         alert(data.error || 'Failed to revoke Exacto prediction')
       }
@@ -150,6 +154,8 @@ export default function ExactoButton({
           setSelectedFixture('')
           setHomeGoals('')
           setAwayGoals('')
+          // Refresh the page to show updated data
+          router.refresh()
         }, 3000)
       } else {
         alert(data.error || 'Failed to submit Exacto prediction')
