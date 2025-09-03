@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import authOptions from '@/lib/auth'
-import Link from 'next/link'
 import ManagePicksForm from './manage-picks-form'
 
 export default async function ManagePicksPage({
@@ -60,17 +59,9 @@ export default async function ManagePicksPage({
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700">
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-white">
-              Manage Picks - {competition.name}
-            </h1>
-            <Link
-              href={`/competition/${competitionId}`}
-              className="px-4 py-2 text-white hover:text-gray-200 transition-colors"
-            >
-              ← Back
-            </Link>
-          </div>
+          <h1 className="text-3xl font-bold text-white mb-6">
+            Manage Picks - {competition.name}
+          </h1>
           
           <ManagePicksForm 
             competition={competition}

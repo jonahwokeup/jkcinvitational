@@ -97,8 +97,8 @@ export default async function MinigamesPage({ params }: MinigamesPageProps) {
         <div className="mt-8 bg-blue-50 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">About Minigames</h3>
           <p className="text-blue-800">
-            Minigames will provide additional fun and engagement opportunities for players.
-            These side games will be separate from the main competition but may offer
+            Minigames will provide additional fun and engagement opportunities for players. 
+            These side games will be separate from the main competition but may offer 
             rewards or bragging rights. Stay tuned for exciting new features!
           </p>
         </div>

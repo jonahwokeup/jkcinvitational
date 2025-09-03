@@ -17,8 +17,6 @@ export const hasAccessCode = (code: string): boolean => {
   return Boolean((ACCESS_CODES as Record<string, unknown>)[code])
 }
 
-// Authentication system configuration
-
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
   url: process.env.NEXTAUTH_URL || "http://localhost:3000",
@@ -33,19 +31,31 @@ const authOptions = {
       },
       async authorize(credentials) {
         try {
+          console.log("AUTH_DEBUG", { 
+            step: "start", 
+            code: credentials?.accessCode,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV
+          })
+          
           if (!credentials?.accessCode) {
+            console.log("AUTH_DEBUG", { step: "no_credentials" })
+            return null
+          }
+
+          const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
+          if (!userInfo) {
+            console.log("AUTH_DEBUG", { step: "code_not_found", code: credentials.accessCode })
             return null
           }
           
-          const userInfo = ACCESS_CODES[credentials.accessCode as keyof typeof ACCESS_CODES]
-          if (!userInfo) {
-            return null
-          }
+          console.log("AUTH_DEBUG", { step: "code_valid", userInfo })
 
           // Get or create user
           let user = await prisma.user.findUnique({
             where: { email: userInfo.email }
           })
+          console.log("AUTH_DEBUG", { step: "find_user", found: Boolean(user), email: userInfo.email })
 
           if (!user) {
             user = await prisma.user.create({
@@ -54,12 +64,14 @@ const authOptions = {
                 name: userInfo.name
               }
             })
+            console.log("AUTH_DEBUG", { step: "create_user", userId: user.id })
           }
 
           // Get the competition (there's only one)
           const competition = await prisma.competition.findFirst({
             where: { name: "JKC Invitational" }
           })
+          console.log("AUTH_DEBUG", { step: "find_competition", found: Boolean(competition) })
 
           if (competition) {
             // Check if user is already in the competition
@@ -69,6 +81,7 @@ const authOptions = {
                 competitionId: competition.id
               }
             })
+            console.log("AUTH_DEBUG", { step: "find_entry", found: Boolean(existingEntry) })
 
             // If not in competition, add them to the competition
             if (!existingEntry) {
@@ -78,6 +91,7 @@ const authOptions = {
                   competitionId: competition.id
                 }
               })
+              console.log("AUTH_DEBUG", { step: "create_entry", userId: user.id })
             }
           }
 
@@ -88,8 +102,10 @@ const authOptions = {
             name: user.name || userInfo.name,
             image: user.image || undefined
           }
+          console.log("AUTH_DEBUG", { step: "success", resultSeen: Boolean(result?.id) })
           return result
         } catch (error) {
+          console.error("AUTH_DEBUG_ERROR", String(error))
           return null
         }
       }
@@ -121,3 +137,5 @@ const authOptions = {
 }
 
 export default authOptions
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)

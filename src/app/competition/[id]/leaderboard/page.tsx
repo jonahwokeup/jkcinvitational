@@ -33,9 +33,9 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
             }
           },
           round: true,
-          exactoPredictions: {
-            include: {
-              fixture: true
+          whomstScores: {
+            orderBy: {
+              score: 'desc'
             }
           }
         },
@@ -89,11 +89,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
     // Count eliminations (gameweeks where user lost)
     const eliminations = Array.from(gameweekResults.values()).filter(result => result === false).length;
     
-    // Count successful Exactos
-    const successfulExactos = entry.exactoPredictions.filter(prediction => 
-      prediction.isCorrect === true
-    ).length;
-    
     // Check if currently eliminated
     const isEliminated = entry.livesRemaining <= 0;
     
@@ -101,12 +96,11 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       ...entry,
       calculatedGwsSurvived: gwsSurvived,
       eliminations,
-      successfulExactos,
       isEliminated
     };
   });
 
-  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations, then more Exactos
+  // Sort entries by Round Wins (most important), then GWs Survived, then fewer eliminations
   entriesWithStats.sort((a, b) => {
     // 1. Round Wins (highest first)
     if (a.seasonRoundWins !== b.seasonRoundWins) {
@@ -123,12 +117,7 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       return a.eliminations - b.eliminations;
     }
     
-    // 4. Exactos (if tied on all above - more Exactos = better)
-    if (a.successfulExactos !== b.successfulExactos) {
-      return b.successfulExactos - a.successfulExactos;
-    }
-    
-    // 5. If still tied, use creation time (earlier entry wins)
+    // 4. If still tied, use creation time (earlier entry wins)
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
@@ -140,14 +129,12 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
       const prevEntry = entriesWithStats[index - 1];
       if (prevEntry.seasonRoundWins === entry.seasonRoundWins &&
           prevEntry.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          prevEntry.eliminations === entry.eliminations &&
-          prevEntry.successfulExactos === entry.successfulExactos) {
+          prevEntry.eliminations === entry.eliminations) {
         // Find the first entry with these same stats
         const firstIndex = entriesWithStats.findIndex(e => 
           e.seasonRoundWins === entry.seasonRoundWins && 
           e.calculatedGwsSurvived === entry.calculatedGwsSurvived &&
-          e.eliminations === entry.eliminations &&
-          e.successfulExactos === entry.successfulExactos
+          e.eliminations === entry.eliminations
         );
         position = firstIndex + 1;
       }
@@ -202,9 +189,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Eliminations
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Exactos
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Current Status
@@ -272,11 +256,6 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-medium text-orange-600">
-                          {entry.successfulExactos}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
                           !entry.isEliminated 
                             ? 'bg-green-100 text-green-800' 
@@ -290,6 +269,137 @@ export default async function LeaderboardPage({ params }: LeaderboardPageProps) 
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Whomst High Scores */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <Trophy className="w-6 h-6 text-purple-600 mr-2" />
+              Whomst High Scores
+            </h2>
+            <Link
+              href={`/competition/${competitionId}/minigames`}
+              className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+            >
+              Play Whomst →
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-purple-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Rank
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Player
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Best Score
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Games Played
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-purple-700 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(() => {
+                    // Get all Whomst scores and group by user
+                    const allScores = competition.entries.flatMap(entry => 
+                      entry.whomstScores.map(score => ({
+                        ...score,
+                        userName: entry.user.name || entry.user.email,
+                        userId: entry.user.id
+                      }))
+                    );
+
+                    // Group by user and find best score for each
+                    const userBestScores = new Map();
+                    allScores.forEach(score => {
+                      const userId = score.userId;
+                      if (!userBestScores.has(userId) || score.score > userBestScores.get(userId).score) {
+                        userBestScores.set(userId, {
+                          ...score,
+                          totalGames: allScores.filter(s => s.userId === userId).length
+                        });
+                      }
+                    });
+
+                    // Sort by best score
+                    const sortedScores = Array.from(userBestScores.values())
+                      .sort((a, b) => b.score - a.score);
+
+                    return sortedScores.map((score, index) => (
+                      <tr key={score.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {index === 0 && <Crown className="w-5 h-5 text-yellow-500 mr-2" />}
+                            {index === 1 && <Medal className="w-5 h-5 text-gray-400 mr-2" />}
+                            {index === 2 && <Medal className="w-5 h-5 text-amber-600 mr-2" />}
+                            <span className="text-sm font-medium text-gray-900">
+                              {index + 1}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {score.userName}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-lg font-bold text-purple-600">
+                            {score.score}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm text-gray-600">
+                            {score.totalGames}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            score.gameType === 'tiebreak' 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {score.gameType === 'tiebreak' ? 'Tiebreak' : 'Fun'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                          {formatDate(score.createdAt)}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            
+            {(() => {
+              const allScores = competition.entries.flatMap(entry => entry.whomstScores);
+              if (allScores.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No Whomst scores yet!</p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      Play Whomst in the minigames section to set your first score.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
 

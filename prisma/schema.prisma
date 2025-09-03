@@ -1,5 +1,4 @@
 // This is your Prisma schema file
-// Uses environment variable for database connection
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -11,14 +10,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Whomst Tiebreak support additions ---
-
+// --- Whomst tiebreak support ---
 enum TiebreakStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
+  none
+  pending
+  in_progress
+  completed
 }
 
+enum TiebreakType {
+  none
+  whomst
+}
 
 model Account {
   id                String  @id @default(cuid())
@@ -84,9 +87,10 @@ model Competition {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   
-  rounds                Round[]
   entries               Entry[]
   gameweeks             Gameweek[]
+  rounds                Round[]
+  whomstScores          WhomstScore[]
   
   seasonChampion        Entry?        @relation("SeasonChampion", fields: [seasonChampionEntryId], references: [id])
 }
@@ -104,38 +108,15 @@ model Round {
   entries         Entry[]
   winner          Entry?       @relation("RoundWinner", fields: [winnerEntryId], references: [id])
   
-  // Tiebreak support
-  tiebreakStatus  TiebreakStatus @default(PENDING)
-  tiebreaks       Tiebreak[]
+  // Tiebreak metadata
+  tiebreakStatus   TiebreakStatus @default(none)
+  tiebreakType     TiebreakType   @default(none)
+  tiebreakStage    Int            @default(0) // 0 = not started; >=1 = iteration
+  tiebreakDeadline DateTime?
+  tiebreakParticipants TiebreakParticipant[]
+  whomstScores     WhomstScore[]
   
   @@unique([competitionId, roundNumber])
-}
-
-model Tiebreak {
-  id        String   @id @default(cuid())
-  roundId   String
-  stage     Int      @default(1) // 1 = initial tiebreak, 2 = replay among top ties, etc.
-  status    TiebreakStatus @default(PENDING)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  round     Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  participants TiebreakParticipant[]
-}
-
-model TiebreakParticipant {
-  id           String   @id @default(cuid())
-  tiebreakId   String
-  entryId      String
-  attemptUsed  Boolean  @default(false)
-  score        Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tiebreak     Tiebreak @relation(fields: [tiebreakId], references: [id], onDelete: Cascade)
-  entry        Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
-
-  @@unique([tiebreakId, entryId])
 }
 
 model Entry {
@@ -150,7 +131,7 @@ model Entry {
   seasonMissedPicks     Int          @default(0)
   firstRoundWinAt       DateTime?
   usedExacto            Boolean      @default(false)
-  exactoSuccess         Boolean      @default(false)
+  exactoSuccess         Int          @default(0)
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   
@@ -158,10 +139,11 @@ model Entry {
   competition           Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   round                 Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   picks                 Pick[]
-  exactoPredictions     ExactoPrediction[]
-  tiebreakParticipations TiebreakParticipant[]
   wonRounds            Round[]      @relation("RoundWinner")
   seasonChampionOf      Competition[] @relation("SeasonChampion")
+  tiebreakParticipants  TiebreakParticipant[]
+  exactoPredictions    ExactoPrediction[]
+  whomstScores         WhomstScore[]
   
   @@unique([userId, competitionId, roundId])
 }
@@ -179,6 +161,7 @@ model Gameweek {
   competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
   fixtures      Fixture[]
   picks         Pick[]
+  exactoPredictions ExactoPrediction[]
   
   @@unique([competitionId, gameweekNumber])
 }
@@ -216,18 +199,55 @@ model Pick {
   @@unique([entryId, gameweekId])
 }
 
-model ExactoPrediction {
+model TiebreakParticipant {
   id         String   @id @default(cuid())
+  roundId    String
   entryId    String
-  fixtureId  String
-  homeScore  Int
-  awayScore  Int
-  isCorrect  Boolean?
+  stage      Int      @default(1) // which tiebreak iteration
+  score      Int?
+  attemptUsed Boolean @default(false)
+  submittedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  
+
+  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
   entry      Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  fixture    Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
-  
-  @@unique([entryId])
+
+  @@unique([roundId, entryId, stage])
+}
+
+model ExactoPrediction {
+  id            String   @id @default(cuid())
+  entryId       String
+  gameweekId    String
+  fixtureId     String
+  homeGoals     Int
+  awayGoals     Int
+  isCorrect     Boolean?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  gameweek      Gameweek @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  fixture       Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, gameweekId])
+}
+
+model WhomstScore {
+  id            String   @id @default(cuid())
+  entryId       String
+  competitionId String
+  score         Int
+  gameType      String   @default("fun") // "fun" or "tiebreak"
+  roundId       String?  // null for fun games, set for tiebreak games
+  stage         Int?     // null for fun games, set for tiebreak games
+  createdAt     DateTime @default(now())
+
+  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  round         Round?   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, score])
+  @@index([entryId, score])
 }

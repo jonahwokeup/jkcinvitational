@@ -126,14 +126,7 @@ export async function createPick(formData: FormData) {
         competitionId: fixture.gameweek.competitionId,
         roundId: { not: null },
       },
-      include: { 
-        picks: true,
-        exactoPredictions: {
-          include: {
-            fixture: true
-          }
-        }
-      },
+      include: { picks: true },
     })
 
     if (!entry) {
@@ -148,21 +141,12 @@ export async function createPick(formData: FormData) {
     const pickedTeam = team === fixture.homeTeam ? fixture.homeTeam : fixture.awayTeam
 
     // Check if team has already been used in this round (excluding current pick if updating)
-    const usedTeamsFromPicks = entry.picks
+    const usedTeams = entry.picks
       .filter(pick => !pickId || pick.id !== pickId)
       .map(pick => pick.team)
     
-    // Get teams from Exacto predictions (these count as "used teams")
-    const usedTeamsFromExacto = entry.exactoPredictions
-      .filter(prediction => prediction.fixture.homeTeam === pickedTeam || prediction.fixture.awayTeam === pickedTeam)
-      .map(prediction => [prediction.fixture.homeTeam, prediction.fixture.awayTeam])
-      .flat()
-    
-    // Combine all used teams
-    const allUsedTeams = [...usedTeamsFromPicks, ...usedTeamsFromExacto]
-    
-    if (allUsedTeams.includes(pickedTeam)) {
-      return { error: "You have already used this team in this round (including in Exacto predictions)" }
+    if (usedTeams.includes(pickedTeam)) {
+      return { error: "You have already used this team in this round" }
     }
 
     if (pickId) {
@@ -226,31 +210,45 @@ export async function settleGameweek(gameweekId: string) {
       return { error: "No active round found" }
     }
 
-    // Process gameweek results (including Exacto evaluation and revival)
-    await processGameweekResults(gameweekId)
+    const entries = currentRound.entries
+    const picks = gameweek.picks
 
-    // Get updated entries after processing
-    const updatedRound = await prisma.round.findFirst({
-      where: {
-        competitionId: gameweek.competitionId,
-        endedAt: null,
-      },
-      include: { entries: true },
-    })
+    // Process each pick
+    for (const pick of picks as any[]) {
+      const fixture = pick.fixture
+      if (fixture.status !== "FINISHED" || fixture.homeGoals === null || fixture.awayGoals === null) {
+        continue
+      }
 
-    if (!updatedRound) {
-      return { error: "No active round found after processing" }
+      const outcome = getFixtureOutcome(
+        fixture.homeGoals,
+        fixture.awayGoals,
+        pick.team,
+        fixture.homeTeam,
+        fixture.awayTeam
+      )
+
+      if (outcome === "LOSS") {
+        // Eliminate the player
+        await prisma.entry.update({
+          where: { id: pick.entryId },
+          data: {
+            livesRemaining: 0,
+            eliminatedAtGw: gameweek.gameweekNumber,
+          },
+        })
+      }
     }
 
-    // Check if round should end (only one player remaining after Exacto processing)
-    const aliveEntries = updatedRound.entries.filter(entry => entry.livesRemaining > 0)
+    // Check if round should end (only one player remaining)
+    const aliveEntries = entries.filter(entry => entry.livesRemaining > 0)
     
     if (aliveEntries.length === 1) {
       // Round winner found
       const winner = aliveEntries[0]
       
       await prisma.round.update({
-        where: { id: updatedRound.id },
+        where: { id: currentRound.id },
         data: {
           winnerEntryId: winner.id,
           endedAt: new Date(),
@@ -269,7 +267,7 @@ export async function settleGameweek(gameweekId: string) {
       const newRound = await prisma.round.create({
         data: {
           competitionId: gameweek.competitionId,
-          roundNumber: updatedRound.roundNumber + 1,
+          roundNumber: currentRound.roundNumber + 1,
         },
       })
 
@@ -641,12 +639,33 @@ async function processFixturePicks(fixtureId: string, homeGoals: number, awayGoa
 // Process gameweek results and eliminate players
 async function processGameweekResults(gameweekId: string) {
   try {
-    // Get the gameweek and competition info
+    // Get gameweek with full context
     const gameweek = await prisma.gameweek.findUnique({
       where: { id: gameweekId },
       include: {
         competition: true,
-        fixtures: true
+        picks: {
+          include: {
+            entry: {
+              include: {
+                user: true,
+                round: true
+              }
+            },
+            fixture: true
+          }
+        },
+        exactoPredictions: {
+          include: {
+            entry: {
+              include: {
+                user: true,
+                round: true
+              }
+            },
+            fixture: true
+          }
+        }
       }
     })
 
@@ -655,17 +674,22 @@ async function processGameweekResults(gameweekId: string) {
       return
     }
 
-    // Get all picks for this gameweek
-    const picks = await prisma.pick.findMany({
-      where: { gameweekId },
-      include: {
-        entry: true,
-        fixture: true
-      }
+    // Get current round
+    const currentRound = await prisma.round.findFirst({
+      where: {
+        competitionId: gameweek.competitionId,
+        endedAt: null
+      },
+      include: { entries: true }
     })
 
-    // STEP 1: Process regular Survivor picks and eliminate losing players
-    for (const pick of picks as any[]) {
+    if (!currentRound) {
+      console.error('No active round found')
+      return
+    }
+
+    // STEP 1: Process regular survivor picks and eliminate players
+    for (const pick of gameweek.picks) {
       const fixture = pick.fixture
       
       if (fixture.status === 'FINISHED' && fixture.homeGoals !== null && fixture.awayGoals !== null) {
@@ -694,109 +718,209 @@ async function processGameweekResults(gameweekId: string) {
       }
     }
 
-    // STEP 2: Check how many survivors remain after regular elimination
-    const currentRound = await prisma.round.findFirst({
+    // STEP 2: Check survivors after regular picks
+    const survivorsAfterRegular = await prisma.entry.findMany({
       where: {
-        competitionId: gameweek.competitionId,
-        endedAt: null,
-      },
-      include: { entries: true },
+        roundId: currentRound.id,
+        livesRemaining: { gt: 0 }
+      }
     })
 
-    if (!currentRound) {
-      console.error('No active round found for competition:', gameweek.competitionId)
-      return
-    }
-
-    const aliveEntries = currentRound.entries.filter(entry => entry.livesRemaining > 0)
-    console.log(`🎯 After regular elimination: ${aliveEntries.length} survivors remain`)
-
-    // STEP 3: Only process Exacto predictions if there are multiple survivors
-    if (aliveEntries.length > 1) {
-      console.log('🎯 Multiple survivors remain - processing Exacto predictions...')
+    // STEP 3: Evaluate Exacto predictions
+    const correctExactos = []
+    for (const exacto of gameweek.exactoPredictions) {
+      const fixture = exacto.fixture
       
-      // Get all Exacto predictions for this gameweek
-      const exactoPredictions = await prisma.exactoPrediction.findMany({
-        where: {
-          entry: {
-            roundId: currentRound.id
-          }
-        },
-        include: {
-          entry: true,
-          fixture: true
-        }
-      })
-
-      console.log(`🎯 Found ${exactoPredictions.length} Exacto predictions to evaluate`)
-
-      // Process each Exacto prediction
-      for (const prediction of exactoPredictions as any[]) {
-        const fixture = prediction.fixture
+      if (fixture.status === 'FINISHED' && fixture.homeGoals !== null && fixture.awayGoals !== null) {
+        const isCorrect = exacto.homeGoals === fixture.homeGoals && exacto.awayGoals === fixture.awayGoals
         
-        // Only evaluate if the fixture has results
-        if (fixture.status === 'FINISHED' && fixture.homeGoals !== null && fixture.awayGoals !== null) {
-          // Check if the prediction matches the actual result
-          const isCorrect = prediction.homeScore === fixture.homeGoals && 
-                           prediction.awayScore === fixture.awayGoals
-          
-          console.log(`🎯 Exacto prediction: ${fixture.homeTeam} ${prediction.homeScore}-${prediction.awayScore} ${fixture.awayTeam}`)
-          console.log(`🎯 Actual result: ${fixture.homeTeam} ${fixture.homeGoals}-${fixture.awayGoals} ${fixture.awayTeam}`)
-          console.log(`🎯 Prediction ${isCorrect ? 'CORRECT' : 'INCORRECT'}`)
+        // Update exacto prediction with result
+        await prisma.exactoPrediction.update({
+          where: { id: exacto.id },
+          data: { isCorrect }
+        })
 
-          // Update the prediction with the result
-          await prisma.exactoPrediction.update({
-            where: { id: prediction.id },
-            data: { isCorrect }
-          })
-
-          // If the prediction is correct, revive the eliminated player
-          if (isCorrect) {
-            console.log(`🎯 Reviving eliminated player: ${prediction.entry.userId}`)
-            
-            await prisma.entry.update({
-              where: { id: prediction.entryId },
-              data: {
-                livesRemaining: 1,
-                eliminatedAtGw: null,
-                exactoSuccess: true,
-                usedExacto: true
-              }
-            })
-
-            console.log(`🎯 Player revived successfully!`)
-          } else {
-            // Mark that they used their Exacto but it was incorrect
-            await prisma.entry.update({
-              where: { id: prediction.entryId },
-              data: {
-                exactoSuccess: false
-              }
-            })
-          }
+        if (isCorrect) {
+          correctExactos.push(exacto)
         }
       }
-    } else {
-      console.log('🎯 Only one survivor remains - Exacto predictions are void')
-      
-      // Mark all Exacto predictions as void (not evaluated)
-      const exactoPredictions = await prisma.exactoPrediction.findMany({
-        where: {
-          entry: {
-            roundId: currentRound.id
+    }
+
+    // STEP 4: Apply Exacto revival logic
+    if (correctExactos.length > 0) {
+      if (survivorsAfterRegular.length === 1) {
+        // Only one survivor: they win immediately, Exacto is void
+        const winner = survivorsAfterRegular[0]
+        await prisma.round.update({
+          where: { id: currentRound.id },
+          data: {
+            winnerEntryId: winner.id,
+            endedAt: new Date()
           }
+        })
+
+        await prisma.entry.update({
+          where: { id: winner.id },
+          data: {
+            seasonRoundWins: { increment: 1 },
+            firstRoundWinAt: winner.firstRoundWinAt || new Date()
+          }
+        })
+
+        // Start new round
+        const newRound = await prisma.round.create({
+          data: {
+            competitionId: gameweek.competitionId,
+            roundNumber: currentRound.roundNumber + 1
+          }
+        })
+
+        // Reset all entries for new round
+        await prisma.entry.updateMany({
+          where: { competitionId: gameweek.competitionId },
+          data: {
+            roundId: newRound.id,
+            livesRemaining: gameweek.competition.livesPerRound,
+            eliminatedAtGw: null,
+            usedExacto: false
+          }
+        })
+
+        return // Round ended, no tiebreak needed
+      } else if (survivorsAfterRegular.length >= 2) {
+        // Multiple survivors: revive correct Exacto players
+        for (const exacto of correctExactos) {
+          await prisma.entry.update({
+            where: { id: exacto.entryId },
+            data: {
+              livesRemaining: 1,
+              usedExacto: true,
+              exactoSuccess: { increment: 1 }
+            }
+          })
+        }
+      }
+    }
+
+    // STEP 5: Check final survivors after Exacto evaluation
+    const finalSurvivors = await prisma.entry.findMany({
+      where: {
+        roundId: currentRound.id,
+        livesRemaining: { gt: 0 }
+      }
+    })
+
+    // STEP 6: Handle tiebreak scenarios
+    if (finalSurvivors.length === 0) {
+      // No survivors: initiate Whomst tiebreak
+      await initiateWhomstTiebreak(currentRound.id, gameweek.competitionId, correctExactos)
+    } else if (finalSurvivors.length === 1) {
+      // One survivor: they win
+      const winner = finalSurvivors[0]
+      await prisma.round.update({
+        where: { id: currentRound.id },
+        data: {
+          winnerEntryId: winner.id,
+          endedAt: new Date()
         }
       })
 
-      for (const prediction of exactoPredictions) {
-        await prisma.exactoPrediction.update({
-          where: { id: prediction.id },
-          data: { isCorrect: false } // Mark as incorrect since they're void
-        })
-      }
+      await prisma.entry.update({
+        where: { id: winner.id },
+        data: {
+          seasonRoundWins: { increment: 1 },
+          firstRoundWinAt: winner.firstRoundWinAt || new Date()
+        }
+      })
+
+      // Start new round
+      const newRound = await prisma.round.create({
+        data: {
+          competitionId: gameweek.competitionId,
+          roundNumber: currentRound.roundNumber + 1
+        }
+      })
+
+      // Reset all entries for new round
+      await prisma.entry.updateMany({
+        where: { competitionId: gameweek.competitionId },
+        data: {
+          roundId: newRound.id,
+          livesRemaining: gameweek.competition.livesPerRound,
+          eliminatedAtGw: null,
+          usedExacto: false
+        }
+      })
     }
+    // If finalSurvivors.length > 1: round continues to next GW
 
   } catch (error) {
     console.error('Error processing gameweek results:', error)
+  }
+}
+
+// Initiate Whomst tiebreak for eliminated players
+async function initiateWhomstTiebreak(roundId: string, competitionId: string, correctExactos: any[]) {
+  try {
+    // Get next gameweek to set deadline
+    const nextGameweek = await prisma.gameweek.findFirst({
+      where: {
+        competitionId,
+        lockTime: { gt: new Date() }
+      },
+      orderBy: { gameweekNumber: 'asc' }
+    })
+
+    const deadline = nextGameweek?.lockTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days default
+
+    // Update round with tiebreak status
+    await prisma.round.update({
+      where: { id: roundId },
+      data: {
+        tiebreakStatus: 'pending',
+        tiebreakType: 'whomst',
+        tiebreakStage: 1,
+        tiebreakDeadline: deadline
+      }
+    })
+
+    // Get all entries eliminated in this GW (regular picks)
+    const eliminatedEntries = await prisma.entry.findMany({
+      where: {
+        roundId,
+        livesRemaining: 0,
+        eliminatedAtGw: { not: null }
+      }
+    })
+
+    // Create tiebreak participants
+    const participants = [...eliminatedEntries]
+    
+    // Add correct Exacto players if any
+    for (const exacto of correctExactos) {
+      if (!participants.find(p => p.id === exacto.entryId)) {
+        const exactoEntry = await prisma.entry.findUnique({
+          where: { id: exacto.entryId }
+        })
+        if (exactoEntry) {
+          participants.push(exactoEntry)
+        }
+      }
+    }
+
+    // Create TiebreakParticipant records
+    for (const participant of participants) {
+      await prisma.tiebreakParticipant.create({
+        data: {
+          roundId,
+          entryId: participant.id,
+          stage: 1
+        }
+      })
+    }
+
+    console.log(`Whomst tiebreak initiated for ${participants.length} participants`)
+  } catch (error) {
+    console.error('Error initiating Whomst tiebreak:', error)
   }
 }

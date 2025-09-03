@@ -22,11 +22,6 @@ export function isBeforeLock(lockTime: Date) {
   return isBefore(new Date(), lockTime)
 }
 
-// Feature flags
-export function isTiebreakEnabled(): boolean {
-  return process.env.FEATURE_TIEBREAK === 'true'
-}
-
 export function toCompetitionTimezone(date: Date, timezone: string = "Europe/London") {
   return date // Simplified for now
 }
