@@ -65,10 +65,6 @@ export default function ExactoButton({
   }
 
   const revokeExacto = async () => {
-    if (!confirm('Are you sure you want to revoke your Exacto prediction? This action cannot be undone.')) {
-      return
-    }
-
     setIsSubmitting(true)
     
     try {
