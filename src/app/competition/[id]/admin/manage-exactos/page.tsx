@@ -37,12 +37,7 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
       gameweeks: {
         orderBy: { gameweekNumber: 'desc' },
         include: {
-          fixtures: {
-            include: {
-              homeTeam: true,
-              awayTeam: true
-            }
-          }
+          fixtures: true
         }
       }
     }
