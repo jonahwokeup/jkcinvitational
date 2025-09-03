@@ -14,6 +14,7 @@ interface ExactoButtonProps {
     homeGoals: number
     awayGoals: number
   }
+  gameweekNumber?: number
 }
 
 export default function ExactoButton({ 
@@ -21,8 +22,9 @@ export default function ExactoButton({
   gameweekId, 
   competitionId, 
   isEliminated, 
-  hasExacto,
-  currentExacto 
+  hasExacto, 
+  currentExacto,
+  gameweekNumber 
 }: ExactoButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -108,7 +110,7 @@ export default function ExactoButton({
         className="flex items-center space-x-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 disabled:bg-gray-100 text-purple-700 text-xs font-medium rounded transition-colors"
       >
         <span>🎯</span>
-        <span>{hasExacto ? 'Change' : 'Submit'}</span>
+        <span>{hasExacto ? 'Change' : 'Submit'} GW{gameweekNumber} Exacto</span>
       </button>
 
       {/* Success Message */}
@@ -158,6 +160,16 @@ export default function ExactoButton({
             )}
 
             <div className="space-y-4">
+              {/* Current Exacto Prediction */}
+              {hasExacto && currentExacto && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <h4 className="text-sm font-medium text-purple-800 mb-2">Current Exacto Prediction</h4>
+                  <p className="text-sm text-purple-700">
+                    {fixtures.find(f => f.id === currentExacto.fixtureId)?.homeTeam} {currentExacto.homeGoals} - {currentExacto.awayGoals} {fixtures.find(f => f.id === currentExacto.fixtureId)?.awayTeam}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Select Fixture
