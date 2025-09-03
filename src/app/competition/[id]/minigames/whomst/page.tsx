@@ -494,6 +494,15 @@ export default function WhomstPage({ params }: WhomstPageProps) {
           {/* Game Over */}
           {gameState.gameStatus !== 'playing' && (
             <div className="text-center">
+              {gameState.gameStatus === 'lost' && (
+                <div className="mb-4">
+                  <img 
+                    src="/thatsthat.GIF" 
+                    alt="Game Over" 
+                    className="w-32 h-32 mx-auto mb-4"
+                  />
+                </div>
+              )}
               <div className={`text-3xl font-bold mb-4 ${
                 gameState.gameStatus === 'won' ? 'text-green-600' : 'text-red-600'
               }`}>
