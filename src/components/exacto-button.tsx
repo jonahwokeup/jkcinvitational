@@ -37,6 +37,7 @@ export default function ExactoButton({
   const [awayGoals, setAwayGoals] = useState('')
   const [fixtures, setFixtures] = useState<any[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   const [teamsUsed, setTeamsUsed] = useState<string[]>([])
   const [currentPrediction, setCurrentPrediction] = useState<any>(null)
 
@@ -85,18 +86,23 @@ export default function ExactoButton({
       const data = await response.json()
       
       if (data.success) {
+        setSuccessMessage('Exacto Revoked. Save it for later ;)')
+        setShowSuccess(true)
         setCurrentPrediction(null)
         // Notify parent component to refresh data
         if (onExactoChange) {
           onExactoChange()
         }
-        setIsOpen(false)
-        // Reset form
-        setSelectedFixture('')
-        setHomeGoals('')
-        setAwayGoals('')
-        // Refresh the page to show updated data
-        router.refresh()
+        setTimeout(() => {
+          setShowSuccess(false)
+          setIsOpen(false)
+          // Reset form
+          setSelectedFixture('')
+          setHomeGoals('')
+          setAwayGoals('')
+          // Refresh the page to show updated data
+          router.refresh()
+        }, 3000)
       } else {
         alert(data.error || 'Failed to revoke Exacto prediction')
       }
@@ -135,6 +141,7 @@ export default function ExactoButton({
       const data = await response.json()
       
       if (data.success) {
+        setSuccessMessage('Exacto submitted. This is gonna hit so hard if you nail it...')
         setShowSuccess(true)
         // Update the current prediction display
         const updatedPrediction = {
@@ -191,7 +198,7 @@ export default function ExactoButton({
               className="w-32 h-32 mx-auto mb-4"
             />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Nice! This is gonna hit so hard if you nail it...
+              {successMessage}
             </h3>
           </div>
         </div>
