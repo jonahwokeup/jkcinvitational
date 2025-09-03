@@ -187,7 +187,20 @@ export default function WhomstPage({ params }: WhomstPageProps) {
   }, [competitionId]);
 
   const handleCardClick = (index: number) => {
-    if (gameState.gameStatus !== 'playing' || gameState.faceDown[index]) {
+    if (gameState.gameStatus !== 'playing') {
+      return;
+    }
+    
+    // If in revive selection mode, handle pile revival
+    if (gameState.showReviveSelection) {
+      if (gameState.faceDown[index]) {
+        handlePileSelection(index);
+      }
+      return;
+    }
+    
+    // Normal game mode - only allow clicking face-up cards
+    if (gameState.faceDown[index]) {
       return;
     }
     
@@ -388,10 +401,21 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     if (!card) return null;
 
     if (isFaceDown) {
+      const isReviveMode = gameState.showReviveSelection;
       return (
-        <div className="w-20 h-28 bg-gray-800 rounded-lg border-2 border-gray-600 flex items-center justify-center transform transition-all duration-300 ease-in-out">
-          <div className="text-white text-sm">❌</div>
-        </div>
+        <button
+          onClick={() => handleCardClick(index)}
+          className={`w-20 h-28 rounded-lg border-2 flex items-center justify-center transform transition-all duration-300 ease-in-out ${
+            isReviveMode 
+              ? 'bg-yellow-200 border-yellow-500 hover:bg-yellow-300 hover:border-yellow-600 cursor-pointer' 
+              : 'bg-gray-800 border-gray-600 cursor-not-allowed'
+          }`}
+          disabled={!isReviveMode}
+        >
+          <div className={`text-sm ${isReviveMode ? 'text-yellow-800' : 'text-white'}`}>
+            {isReviveMode ? '🔄' : '❌'}
+          </div>
+        </button>
       );
     }
 
@@ -634,24 +658,13 @@ export default function WhomstPage({ params }: WhomstPageProps) {
                         <div className="text-center mb-6">
                           <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 mb-4">
                             <p className="text-yellow-800 font-medium mb-3">
-                              Select a face-down pile to revive:
+                              Click on any face-down pile to revive it:
                             </p>
-                            <div className="flex justify-center space-x-4 mb-4">
-                              {getFaceDownPiles(gameState.faceDown).map(pileIndex => (
-                                <button
-                                  key={pileIndex}
-                                  onClick={() => handlePileSelection(pileIndex)}
-                                  className="w-16 h-20 bg-gray-300 border-2 border-yellow-500 rounded-lg hover:bg-yellow-200 transition-colors flex items-center justify-center"
-                                >
-                                  <span className="text-gray-600 font-bold">?</span>
-                                </button>
-                              ))}
-                            </div>
                             <button
                               onClick={cancelReviveSelection}
                               className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                             >
-                              Cancel
+                              Cancel Revival
                             </button>
                           </div>
                         </div>
