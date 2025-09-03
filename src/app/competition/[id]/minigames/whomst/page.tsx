@@ -96,13 +96,6 @@ export default function WhomstPage({ params }: WhomstPageProps) {
     params.then(({ id }) => setCompetitionId(id));
   }, [params]);
 
-  // Save score when game ends
-  useEffect(() => {
-    if (gameState.gameStatus === 'won' || gameState.gameStatus === 'lost') {
-      saveScore(gameState.score);
-    }
-  }, [gameState.gameStatus, gameState.score, competitionId, saveScore]);
-
   // Save Whomst score to database
   const saveScore = useCallback(async (score: number) => {
     if (!competitionId) return;
@@ -125,6 +118,13 @@ export default function WhomstPage({ params }: WhomstPageProps) {
       console.error('Error saving score:', error);
     }
   }, [competitionId]);
+
+  // Save score when game ends
+  useEffect(() => {
+    if (gameState.gameStatus === 'won' || gameState.gameStatus === 'lost') {
+      saveScore(gameState.score);
+    }
+  }, [gameState.gameStatus, gameState.score, competitionId, saveScore]);
 
   const initializeGame = () => {
     const deck = shuffleDeck(createDeck());
