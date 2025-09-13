@@ -77,15 +77,6 @@ export default function AdminExactoForm({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Add error boundary for the component
-  if (!competitionId) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-red-600">Error: Competition ID is missing</p>
-      </div>
-    )
-  }
-
   const loadFixtures = useCallback(async (gameweekId: string) => {
     try {
       const response = await fetch(`/api/competition/fixtures?gameweekId=${gameweekId}&competitionId=${competitionId}`)
@@ -108,6 +99,15 @@ export default function AdminExactoForm({
       loadFixtures(selectedGameweek)
     }
   }, [selectedGameweek, loadFixtures])
+
+  // Add error boundary for the component
+  if (!competitionId) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Error: Competition ID is missing</p>
+      </div>
+    )
+  }
 
   const resetForm = () => {
     setSelectedEntry('')
