@@ -249,6 +249,9 @@ export default function AdminExactoForm({
             <span>Add Exacto</span>
           </button>
         </div>
+        <div className="mt-2 text-sm text-gray-600">
+          Competition ID: {competitionId} | Entries: {entries.length} | Gameweeks: {gameweeks.length}
+        </div>
       </div>
 
       <div className="p-6">

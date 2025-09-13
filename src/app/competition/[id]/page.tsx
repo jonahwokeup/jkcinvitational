@@ -359,6 +359,9 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     const hasExacto = entry.exactoPredictions && entry.exactoPredictions.length > 0
                     const currentExacto = hasExacto ? entry.exactoPredictions[0] : null
                     
+                    // Check if the next gameweek is locked (exactos should be visible to all)
+                    const isGameweekLocked = nextGameweek && new Date(nextGameweek.lockTime) <= new Date()
+                    
                     // Get the next gameweek for Exacto
                     const nextGameweek = competition.gameweeks.find((gw: any) => 
                       gw.gameweekNumber > (currentGameweek?.gameweekNumber || 0) && 
@@ -389,6 +392,12 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                   🎯 Exacto Submitted
                                 </span>
+                                {/* Show exacto prediction if gameweek is locked */}
+                                {isGameweekLocked && currentExacto && (
+                                  <div className="mt-1 text-xs text-gray-600">
+                                    {currentExacto.fixture.homeTeam} {currentExacto.homeGoals} - {currentExacto.awayGoals} {currentExacto.fixture.awayTeam}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
