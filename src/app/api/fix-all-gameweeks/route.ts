@@ -24,10 +24,21 @@ export async function POST() {
     
     const results = []
     
-    // Process each gameweek
+    // Process each gameweek starting from GW5 (leave GW1-GW4 unchanged)
     for (let i = 0; i < allGameweeks.length; i++) {
       const currentGW = allGameweeks[i]
       const targetGWNumber = currentGW.gameweekNumber
+      
+      // Skip GW1-GW4 as they are already correct
+      if (targetGWNumber <= 4) {
+        console.log(`\n⏭️  Skipping GW${targetGWNumber} (already correct)`)
+        results.push({
+          gameweek: targetGWNumber,
+          status: 'skipped',
+          reason: 'GW1-GW4 are already correct'
+        })
+        continue
+      }
       
       console.log(`\n🔄 Processing GW${targetGWNumber}...`)
       
