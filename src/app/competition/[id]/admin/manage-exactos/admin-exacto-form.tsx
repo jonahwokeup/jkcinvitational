@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
 
 interface User {
   id: string
-  name: string
+  name: string | null
   email: string
 }
 
@@ -82,9 +82,9 @@ export default function AdminExactoForm({
     if (selectedGameweek) {
       loadFixtures(selectedGameweek)
     }
-  }, [selectedGameweek])
+  }, [selectedGameweek, loadFixtures])
 
-  const loadFixtures = async (gameweekId: string) => {
+  const loadFixtures = useCallback(async (gameweekId: string) => {
     try {
       const response = await fetch(`/api/competition/${competitionId}/fixtures?gameweekId=${gameweekId}`)
       const data = await response.json()
@@ -98,7 +98,7 @@ export default function AdminExactoForm({
       console.error('Error loading fixtures:', error)
       setError('Error loading fixtures')
     }
-  }
+  }, [competitionId])
 
   const resetForm = () => {
     setSelectedEntry('')
@@ -277,7 +277,7 @@ export default function AdminExactoForm({
                   <option value="">Select a user</option>
                   {entries.map((entry) => (
                     <option key={entry.id} value={entry.id}>
-                      {entry.user.name} ({entry.user.email}) - {entry.livesRemaining} lives
+                      {entry.user.name || 'Unknown User'} ({entry.user.email}) - {entry.livesRemaining} lives
                     </option>
                   ))}
                 </select>
@@ -389,7 +389,7 @@ export default function AdminExactoForm({
                     <div className="flex items-center space-x-4">
                       <div>
                         <p className="font-medium text-gray-900">
-                          {prediction.entry.user.name}
+                          {prediction.entry.user.name || 'Unknown User'}
                         </p>
                         <p className="text-sm text-gray-600">
                           {prediction.entry.user.email}
