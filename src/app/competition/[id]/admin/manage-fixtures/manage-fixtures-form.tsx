@@ -90,6 +90,36 @@ export default function ManageFixturesForm({ competition, gameweeks }: ManageFix
     }
   }
 
+  const updateFixtureKickoff = async (fixtureId: string, newKickoff: string) => {
+    setIsLoading(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/competition/fixtures/update-kickoff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fixtureId,
+          kickoff: newKickoff,
+        }),
+      })
+
+      if (response.ok) {
+        setMessage('Fixture kickoff time updated!')
+        router.refresh()
+      } else {
+        const error = await response.text()
+        setMessage(`Error: ${error}`)
+      }
+    } catch (error) {
+      setMessage('Error updating fixture kickoff')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {message && (
@@ -112,7 +142,7 @@ export default function ManageFixturesForm({ competition, gameweeks }: ManageFix
                     {fixture.homeTeam} v {fixture.awayTeam}
                   </div>
                   <div className="text-green-200 text-sm">
-                    {new Date(fixture.kickoff).toLocaleDateString()} - {fixture.status}
+                    {new Date(fixture.kickoff).toLocaleDateString()} at {new Date(fixture.kickoff).toLocaleTimeString()} - {fixture.status}
                   </div>
                   {fixture.homeGoals !== null && fixture.awayGoals !== null && (
                     <div className="text-yellow-300 font-bold">
@@ -139,6 +169,24 @@ export default function ManageFixturesForm({ competition, gameweeks }: ManageFix
                       </option>
                     ))}
                   </select>
+
+                  {/* Update kickoff time */}
+                  <button
+                    onClick={() => {
+                      const currentKickoff = new Date(fixture.kickoff)
+                      const newKickoff = prompt(
+                        `Enter new kickoff time for ${fixture.homeTeam} v ${fixture.awayTeam}:\n\nCurrent: ${currentKickoff.toLocaleString()}\n\nFormat: YYYY-MM-DD HH:MM (24-hour)\nExample: 2024-09-20 15:30`,
+                        currentKickoff.toISOString().slice(0, 16)
+                      )
+                      if (newKickoff) {
+                        updateFixtureKickoff(fixture.id, newKickoff)
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Edit Time
+                  </button>
 
                   {/* Update result */}
                   {fixture.status === 'SCHEDULED' && (
