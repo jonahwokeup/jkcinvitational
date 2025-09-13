@@ -68,16 +68,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
   // Order: current (in-progress) first, then settled (newest to oldest), then scheduled (ascending)
   // Use a more precise categorization to avoid duplicates
-  
-  // First, find the current gameweek (the one that has started but not finished)
-  // Only one gameweek should be current at a time
-  const currentGameweek = competition.gameweeks.find(gw => 
-    !gw.isSettled && 
-    gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && 
-    !gw.fixtures.some(f => f.status === 'FINISHED')
-  )
-  
-  const currentFirst = currentGameweek ? [currentGameweek] : []
+  const currentFirst = competition.gameweeks
+    .filter(gw => !gw.isSettled && gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
+    .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
 
   const settledLater = competition.gameweeks
     .filter(gw => gw.isSettled || gw.fixtures.some(f => f.status === 'FINISHED'))
@@ -122,7 +115,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
               // Determine the gameweek type for navigation
               const gameweekType = gameweek.isSettled ? 'settled' : 
                 gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'settled' :
-                gameweek === currentGameweek ? 'current' : 'scheduled';
+                gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'current' : 'scheduled';
               
               return (
                 <div 
@@ -145,7 +138,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           ? `Settled on ${formatDate(gameweek.settledAt!, "PPp")}`
                           : gameweek.fixtures.some(f => f.status === 'FINISHED') 
                             ? 'In Progress'
-                            : gameweek === currentGameweek
+                            : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
                               ? 'Current - Picks Locked'
                               : 'Scheduled'
                         }
@@ -157,13 +150,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                         ? 'bg-green-100 text-green-800' 
                         : gameweek.fixtures.some(f => f.status === 'FINISHED')
                         ? 'bg-blue-100 text-blue-800'
-                        : gameweek === currentGameweek
+                        : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
                     }`}>
                       {gameweek.isSettled ? 'Completed' : 
                        gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 
-                       gameweek === currentGameweek ? 'Current' : 'Scheduled'}
+                       gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'Current' : 'Scheduled'}
                     </span>
                     </div>
                   </div>
@@ -223,9 +216,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime) || gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())) && fixture.picks.length > 0 && (
                             <div className="mt-2">
                               <div className="text-xs text-gray-500 mb-1">Picks:</div>
-                              {fixture.picks
-                                .filter(pick => pick.entry.livesRemaining > 0) // Only show picks from survivors
-                                .map(pick => (
+                              {fixture.picks.map(pick => (
                                 <div key={pick.id} className="text-sm">
                                   <span className="font-medium">{pick.entry.user.name}</span>
                                   <span className="text-gray-500"> picked </span>

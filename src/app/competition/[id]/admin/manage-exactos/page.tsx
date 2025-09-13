@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Target, Users, Calendar } from 'lucide-react'
+import AdminExactoForm from './admin-exacto-form'
 
 interface ManageExactosPageProps {
   params: Promise<{ id: string }>
@@ -155,6 +156,19 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Admin Exacto Management */}
+        <div className="mb-8">
+          <AdminExactoForm
+            competitionId={competitionId}
+            entries={competition.entries}
+            gameweeks={competition.gameweeks}
+            existingPredictions={allExactoPredictions}
+            onPredictionChange={() => {
+              // The component will handle refreshing via router.refresh()
+            }}
+          />
         </div>
 
         {/* Exacto Predictions by Gameweek */}

@@ -1,8 +1,7 @@
-const { PrismaClient } = require('@prisma/client')
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
-
-async function fixFixtureShiftSafe() {
+export async function POST() {
   try {
     console.log('🔧 Safely fixing fixture shift issue...\n')
     
@@ -18,6 +17,8 @@ async function fixFixtureShiftSafe() {
       }
     })
     
+    const results = []
+    
     for (const comp of competitions) {
       console.log(`\n📊 Processing Competition: ${comp.name}`)
       
@@ -28,17 +29,17 @@ async function fixFixtureShiftSafe() {
       
       if (gameweeksToShift.length === 0) {
         console.log('   No gameweeks 6+ found, skipping...')
+        results.push({ competition: comp.name, message: 'No gameweeks 6+ found' })
         continue
       }
       
       console.log(`   Found ${gameweeksToShift.length} gameweeks to shift`)
       
-      // First, let's see what we're working with
-      for (const gw of gameweeksToShift) {
-        console.log(`     GW${gw.gameweekNumber}: ${gw.fixtures.length} fixtures`)
-        if (gw.fixtures.length > 0) {
-          console.log(`       First fixture: ${gw.fixtures[0].homeTeam} vs ${gw.fixtures[0].awayTeam}`)
-        }
+      const compResult = {
+        competition: comp.name,
+        gameweeksProcessed: 0,
+        fixturesMoved: 0,
+        details: [] as string[]
       }
       
       // Process in ascending order (lowest gameweek first)
@@ -82,6 +83,10 @@ async function fixFixtureShiftSafe() {
           })
           
           console.log(`     ✅ Moved ${updateResult.count} fixtures from GW${currentGw.gameweekNumber} to GW${newGwNumber}`)
+          
+          compResult.gameweeksProcessed++
+          compResult.fixturesMoved += updateResult.count
+          compResult.details.push(`GW${currentGw.gameweekNumber} -> GW${newGwNumber}: ${updateResult.count} fixtures`)
         } else {
           console.log(`     Target GW${newGwNumber} doesn't exist, creating it...`)
           
@@ -102,6 +107,10 @@ async function fixFixtureShiftSafe() {
           })
           
           console.log(`     ✅ Created GW${newGwNumber} and moved ${updateResult.count} fixtures`)
+          
+          compResult.gameweeksProcessed++
+          compResult.fixturesMoved += updateResult.count
+          compResult.details.push(`Created GW${newGwNumber} and moved ${updateResult.count} fixtures from GW${currentGw.gameweekNumber}`)
         }
       }
       
@@ -141,15 +150,23 @@ async function fixFixtureShiftSafe() {
           console.log(`   ⚠️  GW${emptyGw.gameweekNumber} still has ${fixtureCount} fixtures, keeping it`)
         }
       }
+      
+      results.push(compResult)
     }
     
     console.log('\n✅ Fixture shift fix completed!')
     
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Fixture shift completed successfully',
+      results 
+    })
+    
   } catch (error) {
     console.error('❌ Error:', error)
-  } finally {
-    await prisma.$disconnect()
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    })
   }
 }
-
-fixFixtureShiftSafe()
