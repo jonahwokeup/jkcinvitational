@@ -20,7 +20,7 @@ interface Entry {
 interface Gameweek {
   id: string
   gameweekNumber: number
-  lockTime: Date
+  lockTime: string
   isSettled: boolean
 }
 
@@ -28,7 +28,7 @@ interface Fixture {
   id: string
   homeTeam: string
   awayTeam: string
-  kickoff: Date
+  kickoff: string
   homeGoals: number | null
   awayGoals: number | null
   status: string
@@ -42,8 +42,8 @@ interface ExactoPrediction {
   homeGoals: number
   awayGoals: number
   isCorrect: boolean | null
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   entry: Entry
   gameweek: Gameweek
   fixture: Fixture
