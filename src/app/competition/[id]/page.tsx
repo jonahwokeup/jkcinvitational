@@ -355,14 +355,16 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     // Fallback to last pick if we can't find the eliminated gameweek pick
                     const pickToShow = eliminatedGameweekPick || entry.picks[entry.picks.length - 1]
                     
-                    // Check if user has an Exacto prediction for the next gameweek
+                    // Check if user has used their exacto in the current round (one exacto per round rule)
+                    const hasUsedExacto = entry.usedExacto
                     const hasExacto = entry.exactoPredictions && entry.exactoPredictions.length > 0
                     const currentExacto = hasExacto ? entry.exactoPredictions[0] : null
                     
-                    // Get the next gameweek for Exacto
+                    // Get the next gameweek for Exacto (only future gameweeks, not in progress)
                     const nextGameweek = competition.gameweeks.find((gw: any) => 
                       gw.gameweekNumber > (currentGameweek?.gameweekNumber || 0) && 
-                      !gw.isSettled
+                      !gw.isSettled &&
+                      new Date(gw.lockTime) > new Date() // Only show for future gameweeks
                     )
                     
                     // Check if the next gameweek is locked (exactos should be visible to all)
@@ -406,8 +408,8 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                             <div className="text-xs text-red-600">lives</div>
                           </div>
                         </div>
-                        {/* Exacto Button - Positioned at bottom right */}
-                        {nextGameweek && entry.user.id === session.user!.id && (
+                        {/* Exacto Button - Positioned at bottom right - Only show if user hasn't used their exacto in this round yet */}
+                        {nextGameweek && entry.user.id === session.user!.id && !hasUsedExacto && (
                           <div className="absolute bottom-2 right-2">
                             <ExactoButton
                               entryId={entry.id}

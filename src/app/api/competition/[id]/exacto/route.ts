@@ -160,21 +160,11 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Check if user already has an exacto prediction for this gameweek
-    const existingExacto = await prisma.exactoPrediction.findUnique({
-      where: {
-        entryId_gameweekId: {
-          entryId,
-          gameweekId
-        }
-      }
-    })
-
-    // If exacto already exists and overwrite is not explicitly allowed, prevent submission
-    if (existingExacto && !overwrite) {
+    // Check if user has already used their exacto in this round
+    if (entry.usedExacto && !overwrite) {
       return NextResponse.json({ 
         success: false, 
-        error: 'You have already submitted an exacto prediction for this gameweek. You can only submit one exacto per round.' 
+        error: 'You have already used your exacto prediction for this round. You can only submit one exacto per round.' 
       }, { status: 400 })
     }
 
@@ -199,6 +189,12 @@ export async function POST(
         homeGoals,
         awayGoals
       }
+    })
+
+    // Mark that the user has used their exacto for this round
+    await prisma.entry.update({
+      where: { id: entryId },
+      data: { usedExacto: true }
     })
 
     return NextResponse.json({
@@ -283,6 +279,12 @@ export async function DELETE(
         entryId,
         gameweekId
       }
+    })
+
+    // Reset the usedExacto flag since user revoked their exacto
+    await prisma.entry.update({
+      where: { id: entryId },
+      data: { usedExacto: false }
     })
 
     return NextResponse.json({
