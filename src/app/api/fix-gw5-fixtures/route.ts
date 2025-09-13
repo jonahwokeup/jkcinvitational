@@ -83,6 +83,6 @@ export async function POST() {
     
   } catch (error) {
     console.error('❌ Error:', error)
-    return NextResponse.json({ success: false, error: error.message })
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' })
   }
 }
