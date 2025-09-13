@@ -130,8 +130,7 @@ export default function ExactoButton({
           gameweekId,
           fixtureId: selectedFixture,
           homeGoals: parseInt(homeGoals),
-          awayGoals: parseInt(awayGoals),
-          overwrite: true // Always overwrite existing predictions
+          awayGoals: parseInt(awayGoals)
         }),
       })
 
@@ -183,7 +182,7 @@ export default function ExactoButton({
         className="flex items-center space-x-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 disabled:bg-gray-100 text-purple-700 text-xs font-medium rounded transition-colors"
       >
         <span>🎯</span>
-        <span>{hasExacto ? 'Change' : 'Submit'} GW{gameweekNumber} Exacto</span>
+        <span>{hasExacto ? 'View' : 'Submit'} GW{gameweekNumber} Exacto</span>
       </button>
 
       {/* Success Message */}
@@ -209,7 +208,7 @@ export default function ExactoButton({
           <div className="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                {hasExacto ? 'Change Exacto Prediction' : 'Submit Exacto Prediction'}
+                {hasExacto ? 'View Exacto Prediction' : 'Submit Exacto Prediction'}
               </h3>
               <button
                 onClick={() => setIsOpen(false)}
@@ -250,62 +249,87 @@ export default function ExactoButton({
                 </div>
               )}
 
-              {/* Available Fixtures */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Fixture to Predict
-                </label>
-                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
-                  {fixtures.map((fixture) => (
-                    <button
-                      key={fixture.id}
-                      onClick={() => setSelectedFixture(fixture.id)}
-                      className={`p-3 text-left border rounded-lg transition-colors ${
-                        selectedFixture === fixture.id
-                          ? 'border-purple-500 bg-purple-50 text-purple-900'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="font-medium">
-                        {fixture.homeTeam} vs {fixture.awayTeam}
-                      </div>
-                    </button>
-                  ))}
+              {/* Available Fixtures - Only show if no existing exacto */}
+              {!hasExacto && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Fixture to Predict
+                  </label>
+                  <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                    {fixtures.map((fixture) => (
+                      <button
+                        key={fixture.id}
+                        onClick={() => setSelectedFixture(fixture.id)}
+                        className={`p-3 text-left border rounded-lg transition-colors ${
+                          selectedFixture === fixture.id
+                            ? 'border-purple-500 bg-purple-50 text-purple-900'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium">
+                          {fixture.homeTeam} vs {fixture.awayTeam}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.homeTeam : 'Home Team'} Goals
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={homeGoals}
-                    onChange={(e) => setHomeGoals(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
+              {/* Goal Inputs - Only show if no existing exacto */}
+              {!hasExacto && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.homeTeam : 'Home Team'} Goals
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      value={homeGoals}
+                      onChange={(e) => setHomeGoals(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.awayTeam : 'Away Team'} Goals
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      value={awayGoals}
+                      onChange={(e) => setAwayGoals(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {selectedFixture ? fixtures.find(f => f.id === selectedFixture)?.awayTeam : 'Away Team'} Goals
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={awayGoals}
-                    onChange={(e) => setAwayGoals(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
+              )}
+
+              {/* One Exacto Per Round Message */}
+              {hasExacto && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <span className="text-yellow-400 text-xl">⚠️</span>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-yellow-800">
+                        One Exacto Per Round
+                      </h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        You have already submitted an exacto prediction for this gameweek. 
+                        You can only submit one exacto per round.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex justify-between items-center mt-6">
-              {/* Revoke Exacto Button - Only show if user has an existing prediction */}
+              {/* Revoke Exacto Button - Only show if user has an existing prediction and gameweek is not locked */}
               {(hasExacto && currentExacto) || currentPrediction ? (
                 <button
                   onClick={revokeExacto}
@@ -323,15 +347,18 @@ export default function ExactoButton({
                   onClick={() => setIsOpen(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                 >
-                  Cancel
+                  {hasExacto ? 'Close' : 'Cancel'}
                 </button>
-                <button
-                  onClick={submitExacto}
-                  disabled={isSubmitting || !selectedFixture || !homeGoals || !awayGoals}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Exacto'}
-                </button>
+                {/* Only show submit button if user doesn't have an exacto yet */}
+                {!hasExacto && (
+                  <button
+                    onClick={submitExacto}
+                    disabled={isSubmitting || !selectedFixture || !homeGoals || !awayGoals}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Exacto'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

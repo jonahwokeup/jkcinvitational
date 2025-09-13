@@ -160,6 +160,24 @@ export async function POST(
       }, { status: 400 })
     }
 
+    // Check if user already has an exacto prediction for this gameweek
+    const existingExacto = await prisma.exactoPrediction.findUnique({
+      where: {
+        entryId_gameweekId: {
+          entryId,
+          gameweekId
+        }
+      }
+    })
+
+    // If exacto already exists and overwrite is not explicitly allowed, prevent submission
+    if (existingExacto && !overwrite) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'You have already submitted an exacto prediction for this gameweek. You can only submit one exacto per round.' 
+      }, { status: 400 })
+    }
+
     // Create or update Exacto prediction
     const exactoPrediction = await prisma.exactoPrediction.upsert({
       where: {
