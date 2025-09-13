@@ -20,7 +20,7 @@ interface Entry {
 interface Gameweek {
   id: string
   gameweekNumber: number
-  lockTime: string
+  lockTime: Date
   isSettled: boolean
 }
 
@@ -28,7 +28,7 @@ interface Fixture {
   id: string
   homeTeam: string
   awayTeam: string
-  kickoff: string
+  kickoff: Date
   homeGoals: number | null
   awayGoals: number | null
   status: string
@@ -296,7 +296,7 @@ export default function AdminExactoForm({
                   <option value="">Select a gameweek</option>
                   {gameweeks.map((gw) => (
                     <option key={gw.id} value={gw.id}>
-                      GW{gw.gameweekNumber} - {new Date(gw.lockTime).toLocaleDateString()}
+                      GW{gw.gameweekNumber} - {gw.lockTime.toLocaleDateString()}
                     </option>
                   ))}
                 </select>
