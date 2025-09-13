@@ -70,12 +70,14 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
   // Use a more precise categorization to avoid duplicates
   
   // First, find the current gameweek (the one that has started but not finished)
-  // Only one gameweek should be current at a time
-  const currentGameweek = competition.gameweeks.find(gw => 
-    !gw.isSettled && 
-    gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && 
-    !gw.fixtures.some(f => f.status === 'FINISHED')
-  )
+  // Only one gameweek should be current at a time - prioritize lowest gameweek number
+  const currentGameweek = competition.gameweeks
+    .filter(gw => 
+      !gw.isSettled && 
+      gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && 
+      !gw.fixtures.some(f => f.status === 'FINISHED')
+    )
+    .sort((a, b) => a.gameweekNumber - b.gameweekNumber)[0]
   
   const currentFirst = currentGameweek ? [currentGameweek] : []
 
@@ -84,7 +86,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
 
   const scheduledLast = competition.gameweeks
-    .filter(gw => !gw.isSettled && gw.fixtures.every(f => new Date(f.kickoff) >= new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
+    .filter(gw => gw !== currentGameweek && !gw.isSettled && gw.fixtures.every(f => new Date(f.kickoff) >= new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
     .sort((a, b) => a.gameweekNumber - b.gameweekNumber)
 
   const orderedGameweeks = [...currentFirst, ...settledLater, ...scheduledLast]
@@ -121,7 +123,6 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             .map(gameweek => {
               // Determine the gameweek type for navigation
               const gameweekType = gameweek.isSettled ? 'settled' : 
-                gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'settled' :
                 gameweek === currentGameweek ? 'current' : 'scheduled';
               
               return (
@@ -132,8 +133,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                 >
                 <div className={`px-6 py-4 border-b border-gray-200 ${
                   gameweek.isSettled ? 'bg-green-50' : 
-                  gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'bg-blue-50' :
-                  gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'bg-yellow-50' : 'bg-gray-50'
+                  gameweek === currentGameweek ? 'bg-yellow-50' : 'bg-gray-50'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
@@ -143,11 +143,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                       <p className="text-sm text-gray-600">
                         {gameweek.isSettled 
                           ? `Settled on ${formatDate(gameweek.settledAt!, "PPp")}`
-                          : gameweek.fixtures.some(f => f.status === 'FINISHED') 
-                            ? 'In Progress'
-                            : gameweek === currentGameweek
-                              ? 'Current - Picks Locked'
-                              : 'Scheduled'
+                          : gameweek === currentGameweek
+                            ? 'Current - Picks Locked'
+                            : 'Scheduled'
                         }
                       </p>
                     </div>
@@ -155,14 +153,11 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                       gameweek.isSettled 
                         ? 'bg-green-100 text-green-800' 
-                        : gameweek.fixtures.some(f => f.status === 'FINISHED')
-                        ? 'bg-blue-100 text-blue-800'
                         : gameweek === currentGameweek
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
                     }`}>
                       {gameweek.isSettled ? 'Completed' : 
-                       gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 
                        gameweek === currentGameweek ? 'Current' : 'Scheduled'}
                     </span>
                     </div>
@@ -223,7 +218,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           {(gameweek.isSettled || !isBeforeLock(gameweek.lockTime) || gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())) && fixture.picks.length > 0 && (
                             <div className="mt-2">
                               <div className="text-xs text-gray-500 mb-1">Picks:</div>
-                              {fixture.picks.map(pick => (
+                              {fixture.picks
+                                .filter(pick => pick.entry.livesRemaining > 0) // Only show picks from survivors
+                                .map(pick => (
                                 <div key={pick.id} className="text-sm">
                                   <span className="font-medium">{pick.entry.user.name}</span>
                                   <span className="text-gray-500"> picked </span>
@@ -234,13 +231,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                                         ? (fixture.homeGoals! > fixture.awayGoals! ? 'bg-green-100 text-green-800' : 
                                            fixture.homeGoals! === fixture.awayGoals! ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800')
                                         : (fixture.awayGoals! > fixture.homeGoals! ? 'bg-green-100 text-green-800' : 
-                                           fixture.awayGoals! === fixture.homeGoals! ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800')
+                                           fixture.awayGoals! === fixture.awayGoals! ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800')
                                     }`}>
                                       {pick.team === fixture.homeTeam 
                                         ? (fixture.homeGoals! > fixture.awayGoals! ? 'WIN' : 
                                            fixture.homeGoals! === fixture.awayGoals! ? 'DRAW' : 'LOSS')
                                         : (fixture.awayGoals! > fixture.homeGoals! ? 'WIN' : 
-                                           fixture.awayGoals! === fixture.homeGoals! ? 'DRAW' : 'LOSS')}
+                                           fixture.awayGoals! === fixture.awayGoals! ? 'DRAW' : 'LOSS')}
                                     </span>
                                   )}
                                 </div>
