@@ -59,10 +59,6 @@ export default function AdminExactoPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    loadData()
-  }, [competitionId, loadData])
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
@@ -95,6 +91,10 @@ export default function AdminExactoPage() {
       setLoading(false)
     }
   }, [competitionId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handlePredictionChange = () => {
     loadData() // Reload data when predictions change
