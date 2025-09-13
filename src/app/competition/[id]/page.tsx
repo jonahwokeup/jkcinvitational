@@ -388,7 +388,7 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                                 <TeamCrest teamName={pickToShow.team} size="sm" />
                               </div>
                             )}
-                            {/* Exacto Submitted Indicator */}
+                            {/* Exacto Submitted Indicator - Show for all users */}
                             {hasExacto && (
                               <div className="mt-1">
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
