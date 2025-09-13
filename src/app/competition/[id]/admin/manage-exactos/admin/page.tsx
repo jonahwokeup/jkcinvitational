@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import AdminExactoForm from '../admin-exacto-form'
 
@@ -61,9 +61,9 @@ export default function AdminExactoPage() {
 
   useEffect(() => {
     loadData()
-  }, [competitionId])
+  }, [competitionId, loadData])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -94,7 +94,7 @@ export default function AdminExactoPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [competitionId])
 
   const handlePredictionChange = () => {
     loadData() // Reload data when predictions change

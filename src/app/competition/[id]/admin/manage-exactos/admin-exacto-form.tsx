@@ -66,15 +66,6 @@ export default function AdminExactoForm({
 }: AdminExactoFormProps) {
   const router = useRouter()
   const [isAdding, setIsAdding] = useState(false)
-  
-  // Add error boundary for the component
-  if (!competitionId) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-red-600">Error: Competition ID is missing</p>
-      </div>
-    )
-  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState('')
   const [selectedGameweek, setSelectedGameweek] = useState('')
@@ -85,6 +76,15 @@ export default function AdminExactoForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Add error boundary for the component
+  if (!competitionId) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Error: Competition ID is missing</p>
+      </div>
+    )
+  }
 
   const loadFixtures = useCallback(async (gameweekId: string) => {
     try {
