@@ -53,18 +53,6 @@ export default function AdminExactoPage() {
   const params = useParams()
   const competitionId = params.id as string
   
-  // Add error boundary for missing competition ID
-  if (!competitionId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-600">Competition ID is missing</p>
-        </div>
-      </div>
-    )
-  }
-  
   const [entries, setEntries] = useState<Entry[]>([])
   const [gameweeks, setGameweeks] = useState<Gameweek[]>([])
   const [existingPredictions, setExistingPredictions] = useState<ExactoPrediction[]>([])
@@ -110,6 +98,18 @@ export default function AdminExactoPage() {
 
   const handlePredictionChange = () => {
     loadData() // Reload data when predictions change
+  }
+
+  // Add error boundary for missing competition ID
+  if (!competitionId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+          <p className="text-gray-600">Competition ID is missing</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
