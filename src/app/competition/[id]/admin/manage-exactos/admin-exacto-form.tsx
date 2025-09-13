@@ -79,7 +79,7 @@ export default function AdminExactoForm({
 
   const loadFixtures = useCallback(async (gameweekId: string) => {
     try {
-      const response = await fetch(`/api/competition/${competitionId}/fixtures?gameweekId=${gameweekId}`)
+      const response = await fetch(`/api/competition/fixtures?gameweekId=${gameweekId}&competitionId=${competitionId}`)
       const data = await response.json()
       
       if (data.success) {

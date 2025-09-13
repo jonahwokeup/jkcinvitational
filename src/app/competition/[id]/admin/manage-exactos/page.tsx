@@ -11,13 +11,14 @@ interface ManageExactosPageProps {
 }
 
 export default async function ManageExactosPage({ params }: ManageExactosPageProps) {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
-  }
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      redirect('/auth/signin')
+    }
 
-  const { id: competitionId } = await params
+    const { id: competitionId } = await params
 
   // Get competition and verify admin access
   const competition = await prisma.competition.findUnique({
@@ -260,4 +261,16 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
       </div>
     </div>
   )
+  } catch (error) {
+    console.error('Error in ManageExactosPage:', error)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Page</h1>
+          <p className="text-gray-600">There was an error loading the manage exactos page.</p>
+          <p className="text-sm text-gray-500 mt-2">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
+  }
 }
