@@ -367,8 +367,8 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                       new Date(gw.lockTime) > new Date() // Only show for future gameweeks
                     )
                     
-                    // Check if the next gameweek is locked (exactos should be visible to all)
-                    const isGameweekLocked = nextGameweek && new Date(nextGameweek.lockTime) <= new Date()
+                    // Check if the current gameweek is locked (exactos should be visible to all)
+                    const isGameweekLocked = currentGameweek && new Date(currentGameweek.lockTime) <= new Date()
                     
                     return (
                       <div
