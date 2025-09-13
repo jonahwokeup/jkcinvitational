@@ -66,10 +66,20 @@ export default function AdminExactoPage() {
   const loadData = async () => {
     try {
       setLoading(true)
+      setError('')
+      
+      console.log('Loading admin data for competition:', competitionId)
       
       // Load competition data
       const response = await fetch(`/api/competition/${competitionId}/admin-data`)
+      console.log('Response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
+      console.log('Response data:', data)
       
       if (data.success) {
         setEntries(data.entries || [])
@@ -80,7 +90,7 @@ export default function AdminExactoPage() {
       }
     } catch (error) {
       console.error('Error loading data:', error)
-      setError('Error loading data')
+      setError(`Error loading data: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -121,13 +131,20 @@ export default function AdminExactoPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <AdminExactoForm
-          competitionId={competitionId}
-          entries={entries}
-          gameweeks={gameweeks}
-          existingPredictions={existingPredictions}
-          onPredictionChange={handlePredictionChange}
-        />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Admin Exacto Management</h1>
+          <p className="text-gray-600">Manage exacto predictions for any user in the competition.</p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <AdminExactoForm
+            competitionId={competitionId}
+            entries={entries}
+            gameweeks={gameweeks}
+            existingPredictions={existingPredictions}
+            onPredictionChange={handlePredictionChange}
+          />
+        </div>
       </div>
     </div>
   )
