@@ -359,14 +359,14 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                     const hasExacto = entry.exactoPredictions && entry.exactoPredictions.length > 0
                     const currentExacto = hasExacto ? entry.exactoPredictions[0] : null
                     
-                    // Check if the next gameweek is locked (exactos should be visible to all)
-                    const isGameweekLocked = nextGameweek && new Date(nextGameweek.lockTime) <= new Date()
-                    
                     // Get the next gameweek for Exacto
                     const nextGameweek = competition.gameweeks.find((gw: any) => 
                       gw.gameweekNumber > (currentGameweek?.gameweekNumber || 0) && 
                       !gw.isSettled
                     )
+                    
+                    // Check if the next gameweek is locked (exactos should be visible to all)
+                    const isGameweekLocked = nextGameweek && new Date(nextGameweek.lockTime) <= new Date()
                     
                     return (
                       <div
