@@ -68,9 +68,16 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
   // Order: current (in-progress) first, then settled (newest to oldest), then scheduled (ascending)
   // Use a more precise categorization to avoid duplicates
-  const currentFirst = competition.gameweeks
-    .filter(gw => !gw.isSettled && gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && !gw.fixtures.some(f => f.status === 'FINISHED'))
-    .sort((a, b) => b.gameweekNumber - a.gameweekNumber)
+  
+  // First, find the current gameweek (the one that has started but not finished)
+  // Only one gameweek should be current at a time
+  const currentGameweek = competition.gameweeks.find(gw => 
+    !gw.isSettled && 
+    gw.fixtures.some(f => new Date(f.kickoff) < new Date()) && 
+    !gw.fixtures.some(f => f.status === 'FINISHED')
+  )
+  
+  const currentFirst = currentGameweek ? [currentGameweek] : []
 
   const settledLater = competition.gameweeks
     .filter(gw => gw.isSettled || gw.fixtures.some(f => f.status === 'FINISHED'))
@@ -115,7 +122,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
               // Determine the gameweek type for navigation
               const gameweekType = gameweek.isSettled ? 'settled' : 
                 gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'settled' :
-                gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'current' : 'scheduled';
+                gameweek === currentGameweek ? 'current' : 'scheduled';
               
               return (
                 <div 
@@ -138,7 +145,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                           ? `Settled on ${formatDate(gameweek.settledAt!, "PPp")}`
                           : gameweek.fixtures.some(f => f.status === 'FINISHED') 
                             ? 'In Progress'
-                            : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
+                            : gameweek === currentGameweek
                               ? 'Current - Picks Locked'
                               : 'Scheduled'
                         }
@@ -150,13 +157,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                         ? 'bg-green-100 text-green-800' 
                         : gameweek.fixtures.some(f => f.status === 'FINISHED')
                         ? 'bg-blue-100 text-blue-800'
-                        : gameweek.fixtures.some(f => new Date(f.kickoff) < new Date())
+                        : gameweek === currentGameweek
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
                     }`}>
                       {gameweek.isSettled ? 'Completed' : 
                        gameweek.fixtures.some(f => f.status === 'FINISHED') ? 'In Progress' : 
-                       gameweek.fixtures.some(f => new Date(f.kickoff) < new Date()) ? 'Current' : 'Scheduled'}
+                       gameweek === currentGameweek ? 'Current' : 'Scheduled'}
                     </span>
                     </div>
                   </div>
