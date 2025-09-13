@@ -231,11 +231,11 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
                       
                       <div className="text-right">
                         <p className="text-sm text-gray-600">
-                          Submitted: {new Date(prediction.createdAt).toLocaleDateString()}
+                          Submitted: {prediction.createdAt.toLocaleDateString()}
                         </p>
-                        {prediction.updatedAt !== prediction.createdAt && (
+                        {prediction.updatedAt.getTime() !== prediction.createdAt.getTime() && (
                           <p className="text-sm text-gray-600">
-                            Updated: {new Date(prediction.updatedAt).toLocaleDateString()}
+                            Updated: {prediction.updatedAt.toLocaleDateString()}
                           </p>
                         )}
                       </div>

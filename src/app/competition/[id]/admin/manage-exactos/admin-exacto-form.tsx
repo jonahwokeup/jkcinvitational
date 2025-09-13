@@ -42,8 +42,8 @@ interface ExactoPrediction {
   homeGoals: number
   awayGoals: number
   isCorrect: boolean | null
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
   entry: Entry
   gameweek: Gameweek
   fixture: Fixture
