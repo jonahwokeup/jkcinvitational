@@ -22,18 +22,18 @@ export async function POST() {
     for (const comp of competitions) {
       console.log(`\n📊 Processing Competition: ${comp.name}`)
       
-      // Get all gameweeks 5 and above, sorted by gameweek number descending
+      // Get only gameweeks 1-3, sorted by gameweek number descending
       const gameweeksToShift = comp.gameweeks
-        .filter(gw => gw.gameweekNumber >= 5)
+        .filter(gw => gw.gameweekNumber >= 1 && gw.gameweekNumber <= 3)
         .sort((a, b) => b.gameweekNumber - a.gameweekNumber) // Process highest first
       
       if (gameweeksToShift.length === 0) {
-        console.log('   No gameweeks 5+ found, skipping...')
-        results.push({ competition: comp.name, message: 'No gameweeks 5+ found' })
+        console.log('   No gameweeks 1-3 found, skipping...')
+        results.push({ competition: comp.name, message: 'No gameweeks 1-3 found' })
         continue
       }
       
-      console.log(`   Found ${gameweeksToShift.length} gameweeks to shift back`)
+      console.log(`   Found ${gameweeksToShift.length} gameweeks (1-3) to shift back`)
       
       const compResult = {
         competition: comp.name,
