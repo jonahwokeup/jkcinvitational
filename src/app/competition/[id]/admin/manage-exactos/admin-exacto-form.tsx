@@ -77,13 +77,6 @@ export default function AdminExactoForm({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Load fixtures when gameweek changes
-  useEffect(() => {
-    if (selectedGameweek) {
-      loadFixtures(selectedGameweek)
-    }
-  }, [selectedGameweek, loadFixtures])
-
   const loadFixtures = useCallback(async (gameweekId: string) => {
     try {
       const response = await fetch(`/api/competition/${competitionId}/fixtures?gameweekId=${gameweekId}`)
@@ -99,6 +92,13 @@ export default function AdminExactoForm({
       setError('Error loading fixtures')
     }
   }, [competitionId])
+
+  // Load fixtures when gameweek changes
+  useEffect(() => {
+    if (selectedGameweek) {
+      loadFixtures(selectedGameweek)
+    }
+  }, [selectedGameweek, loadFixtures])
 
   const resetForm = () => {
     setSelectedEntry('')
