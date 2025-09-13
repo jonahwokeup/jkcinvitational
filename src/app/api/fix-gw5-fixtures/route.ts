@@ -68,6 +68,10 @@ export async function POST() {
       include: { fixtures: true }
     })
     
+    if (!updatedGW5) {
+      return NextResponse.json({ success: false, error: 'Failed to verify GW5 update' })
+    }
+    
     const fixtureList = updatedGW5.fixtures.map((fixture, i) => ({
       number: i + 1,
       homeTeam: fixture.homeTeam,
