@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Target, Users, Calendar } from 'lucide-react'
-import AdminExactoForm from './admin-exacto-form'
 
 interface ManageExactosPageProps {
   params: Promise<{ id: string }>
@@ -161,15 +160,23 @@ export default async function ManageExactosPage({ params }: ManageExactosPagePro
 
         {/* Admin Exacto Management */}
         <div className="mb-8">
-          <AdminExactoForm
-            competitionId={competitionId}
-            entries={competition.entries}
-            gameweeks={competition.gameweeks}
-            existingPredictions={allExactoPredictions}
-            onPredictionChange={() => {
-              // The component will handle refreshing via router.refresh()
-            }}
-          />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Exacto Management</h3>
+            <p className="text-gray-600 mb-4">
+              Manage exacto predictions for any user in the competition.
+            </p>
+            <div className="flex space-x-4">
+              <Link
+                href={`/competition/${competitionId}/admin/manage-exactos/admin`}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Open Admin Panel
+              </Link>
+            </div>
+            <div className="text-sm text-gray-500 mt-4">
+              This feature allows you to input, edit, and delete exacto predictions for any user.
+            </div>
+          </div>
         </div>
 
         {/* Exacto Predictions by Gameweek */}
