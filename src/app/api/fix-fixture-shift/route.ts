@@ -39,7 +39,7 @@ export async function POST() {
         competition: comp.name,
         gameweeksProcessed: 0,
         fixturesMoved: 0,
-        details: []
+        details: [] as string[]
       }
       
       // Process in ascending order (lowest gameweek first)
