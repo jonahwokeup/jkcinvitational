@@ -27,9 +27,10 @@ export default async function PickPage({ params }: PickPageProps) {
     where: { id: competitionId },
     include: {
       gameweeks: {
-        where: { lockTime: { gt: new Date() } },
-        orderBy: { lockTime: 'asc' },
-        take: 1,
+        where: { 
+          isSettled: false
+        },
+        orderBy: { gameweekNumber: 'asc' },
         include: {
           fixtures: true,
         },
@@ -51,7 +52,18 @@ export default async function PickPage({ params }: PickPageProps) {
     notFound()
   }
 
-  const nextGameweek = competition.gameweeks[0]
+  // Find the next available gameweek (not settled and first fixture hasn't started)
+  const nextGameweek = competition.gameweeks.find((gw: any) => {
+    if (gw.isSettled) return false
+    if (!gw.fixtures || gw.fixtures.length === 0) return false
+    
+    // Check if the first fixture hasn't started yet
+    const firstFixture = gw.fixtures.reduce((earliest: any, fixture: any) => {
+      return new Date(fixture.kickoff) < new Date(earliest.kickoff) ? fixture : earliest
+    }, gw.fixtures[0])
+    
+    return new Date(firstFixture.kickoff) > new Date()
+  })
 
   // Debug logging
   console.log('🔍 Pick Page Debug:');
