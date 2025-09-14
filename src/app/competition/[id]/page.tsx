@@ -72,6 +72,8 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
   console.log('🔍 Competition Page Debug:');
   console.log('  Competition:', competition.name);
   console.log('  Total gameweeks:', competition.gameweeks.length);
+  console.log('  Current time (local):', new Date().toISOString());
+  console.log('  Current time (UTC):', new Date().toUTCString());
   
   competition.gameweeks.forEach(gw => {
     const lockTimePassed = !isBeforeLock(gw.lockTime);
@@ -87,21 +89,53 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
     console.log(`    Fixtures count: ${gw.fixtures?.length || 0}`);
   });
   
-  // Find gameweeks in different states
-  const scheduledGameweek = competition.gameweeks.find(gw => 
-    isBeforeLock(gw.lockTime) && 
-    !gw.isSettled && 
-    (!gw.fixtures || gw.fixtures.every(fixture => new Date(fixture.kickoff) >= new Date()))
-  )
+  // Find the next scheduled gameweek (not settled and first fixture hasn't started)
+  const scheduledGameweek = competition.gameweeks.find(gw => {
+    if (gw.isSettled) {
+      console.log(`    GW${gw.gameweekNumber}: Skipped - is settled`);
+      return false
+    }
+    if (!gw.fixtures || gw.fixtures.length === 0) {
+      console.log(`    GW${gw.gameweekNumber}: Skipped - no fixtures`);
+      return false
+    }
+    
+    // Check if the first fixture hasn't started yet
+    const firstFixture = gw.fixtures.reduce((earliest: any, fixture: any) => {
+      return new Date(fixture.kickoff) < new Date(earliest.kickoff) ? fixture : earliest
+    }, gw.fixtures[0])
+    
+    const firstFixtureTime = new Date(firstFixture.kickoff)
+    const now = new Date()
+    const isFirstFixtureInFuture = firstFixtureTime > now
+    
+    console.log(`    GW${gw.gameweekNumber}: First fixture at ${firstFixtureTime.toISOString()}, now is ${now.toISOString()}, is future: ${isFirstFixtureInFuture}`);
+    
+    return isFirstFixtureInFuture
+  })
   
-  // A gameweek is current if it's not settled and either:
-  // 1. Lock time has passed, OR
-  // 2. Any fixtures have started (kickoff time has passed)
-  const currentGameweek = competition.gameweeks.find(gw => 
-    !gw.isSettled && 
-    (!isBeforeLock(gw.lockTime) || 
-     (gw.fixtures && gw.fixtures.some(fixture => new Date(fixture.kickoff) < new Date())))
-  )
+  // A gameweek is current if it's not settled and any fixtures have started
+  const currentGameweek = competition.gameweeks.find(gw => {
+    if (gw.isSettled) {
+      console.log(`    GW${gw.gameweekNumber}: Skipped for current - is settled`);
+      return false
+    }
+    if (!gw.fixtures || gw.fixtures.length === 0) {
+      console.log(`    GW${gw.gameweekNumber}: Skipped for current - no fixtures`);
+      return false
+    }
+    
+    const hasStartedFixtures = gw.fixtures.some(fixture => {
+      const fixtureTime = new Date(fixture.kickoff)
+      const now = new Date()
+      const hasStarted = fixtureTime < now
+      console.log(`      Fixture ${fixture.homeTeam} vs ${fixture.awayTeam}: ${fixtureTime.toISOString()} < ${now.toISOString()} = ${hasStarted}`);
+      return hasStarted
+    })
+    
+    console.log(`    GW${gw.gameweekNumber}: Has started fixtures: ${hasStartedFixtures}`);
+    return hasStartedFixtures
+  })
   
   console.log('🔍 Gameweek Detection Results:');
   console.log('  Scheduled gameweek:', scheduledGameweek ? `GW${scheduledGameweek.gameweekNumber}` : 'None');
