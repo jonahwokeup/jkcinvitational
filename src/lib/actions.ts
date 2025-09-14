@@ -202,6 +202,7 @@ export async function settleGameweek(gameweekId: string) {
         competition: true,
         fixtures: { include: { picks: true } },
         picks: { include: { entry: true, fixture: true } },
+        exactoPredictions: { include: { fixture: true, entry: true } },
       },
     })
 
@@ -575,6 +576,9 @@ export async function updateFixtureResult(
     // IMMEDIATELY process picks for this fixture and eliminate players
     await processFixturePicks(fixtureId, homeGoals, awayGoals)
 
+    // IMMEDIATELY evaluate exacto predictions for this fixture
+    await evaluateExactoPredictionsForFixture(fixtureId, homeGoals, awayGoals)
+
     // Check if all fixtures in this gameweek now have results
     const allFixturesFinished = fixture.gameweek.fixtures.every(f => 
       f.status === 'FINISHED' && f.homeGoals !== null && f.awayGoals !== null
@@ -604,6 +608,37 @@ export async function updateFixtureResult(
   } catch (error) {
     console.error('Error updating fixture result:', error)
     return { error: "Failed to update fixture result" }
+  }
+}
+
+// Evaluate exacto predictions for a specific fixture
+async function evaluateExactoPredictionsForFixture(fixtureId: string, homeGoals: number, awayGoals: number) {
+  try {
+    // Get all exacto predictions for this specific fixture
+    const exactoPredictions = await prisma.exactoPrediction.findMany({
+      where: { fixtureId },
+      include: {
+        entry: {
+          include: { user: true }
+        },
+        fixture: true
+      }
+    })
+
+    // Evaluate each exacto prediction
+    for (const exacto of exactoPredictions) {
+      const isCorrect = exacto.homeGoals === homeGoals && exacto.awayGoals === awayGoals
+      
+      // Update exacto prediction with result
+      await prisma.exactoPrediction.update({
+        where: { id: exacto.id },
+        data: { isCorrect }
+      })
+
+      console.log(`Exacto evaluation: ${exacto.entry.user.name || exacto.entry.user.email} predicted ${exacto.homeGoals}-${exacto.awayGoals}, actual was ${homeGoals}-${awayGoals}, correct: ${isCorrect}`)
+    }
+  } catch (error) {
+    console.error('Error evaluating exacto predictions for fixture:', error)
   }
 }
 

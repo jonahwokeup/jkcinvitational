@@ -427,6 +427,10 @@ export default async function CompetitionPage({ params }: CompetitionPageProps) 
                               <div className="mt-1">
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                   🎯 Exacto Submitted
+                                  {/* Show red X if exacto was incorrect */}
+                                  {currentExacto && currentExacto.isCorrect === false && (
+                                    <span className="ml-1 text-red-600">❌</span>
+                                  )}
                                 </span>
                                 {/* Show exacto prediction if gameweek is locked */}
                                 {isGameweekLocked && currentExacto && (
