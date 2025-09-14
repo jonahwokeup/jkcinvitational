@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Found ${gw6.fixtures.length} fixtures in GW6`)
 
     // Team name mappings to fix
-    const teamNameMappings = {
+    const teamNameMappings: Record<string, string> = {
       'Brighton': 'Brighton & Hove Albion',
       'Tottenham': 'Tottenham Hotspur', 
       'Wolves': 'Wolverhampton Wanderers',
@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
       let newAwayTeam = fixture.awayTeam
 
       // Check if home team needs fixing
-      if (teamNameMappings[fixture.homeTeam]) {
+      if (fixture.homeTeam in teamNameMappings) {
         newHomeTeam = teamNameMappings[fixture.homeTeam]
         needsUpdate = true
       }
 
       // Check if away team needs fixing  
-      if (teamNameMappings[fixture.awayTeam]) {
+      if (fixture.awayTeam in teamNameMappings) {
         newAwayTeam = teamNameMappings[fixture.awayTeam]
         needsUpdate = true
       }
