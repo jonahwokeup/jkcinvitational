@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       data: {
         competitionId: competition.id,
         gameweekNumber: 7,
-        name: 'Gameweek 7',
         lockTime: new Date('2025-10-03T19:00:00-05:00'), // 7:00 PM EST (first match kickoff)
         isSettled: false
       }
@@ -146,7 +145,6 @@ export async function POST(request: NextRequest) {
       gameweek: {
         id: gw7.id,
         number: gw7.gameweekNumber,
-        name: gw7.name,
         lockTime: gw7.lockTime,
         fixtureCount: createdFixtures.length
       },
