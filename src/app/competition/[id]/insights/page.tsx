@@ -182,21 +182,44 @@ export default async function InsightsPage({ params }: PageProps) {
 
     // For settled gameweeks (GW1, GW2, etc.), use historical data
     const gameweekEntries = competition.entries.map((entry) => {
-      const gameweekPicks = entry.picks.filter(pick => pick.gameweekId === gameweek.id);
-      const gameweekWins = gameweekPicks.filter(pick => {
-        const fixture = pick.fixture;
-        if (fixture.status !== "FINISHED") return false;
-        return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
-               (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
-      }).length;
+      // Calculate cumulative stats up to this specific gameweek
+      const gameweeksUpToThis = competition.gameweeks
+        .filter(gw => gw.gameweekNumber <= gameweek.gameweekNumber)
+        .sort((a, b) => a.gameweekNumber - b.gameweekNumber);
+
+      // Count GWs survived up to this point
+      let cumulativeGwsSurvived = 0;
+      let cumulativeRoundWins = 0;
+
+      for (const gw of gameweeksUpToThis) {
+        const gwPicks = entry.picks.filter(pick => pick.gameweekId === gw.id);
+        const gwWins = gwPicks.filter(pick => {
+          const fixture = pick.fixture;
+          if (fixture.status !== "FINISHED") return false;
+          return (pick.team === fixture.homeTeam && fixture.homeGoals! > fixture.awayGoals!) ||
+                 (pick.team === fixture.awayTeam && fixture.awayGoals! > fixture.homeGoals!);
+        }).length;
+
+        if (gwWins > 0) {
+          cumulativeGwsSurvived++;
+        }
+
+        // Check if this was a round win (all picks in this GW won)
+        if (gwPicks.length > 0 && gwWins === gwPicks.length) {
+          cumulativeRoundWins++;
+        }
+      }
+
+      // Check if user was eliminated by this gameweek
+      const wasEliminatedByThisGw = entry.eliminatedAtGw && entry.eliminatedAtGw <= gameweek.gameweekNumber;
 
       return {
         userId: entry.userId,
         user: entry.user,
         gameweekNumber: gameweek.gameweekNumber,
-        survived: gameweekWins > 0,
-        gwsSurvived: entry.seasonGwsSurvived,
-        roundWins: entry.seasonRoundWins,
+        survived: !wasEliminatedByThisGw,
+        gwsSurvived: cumulativeGwsSurvived,
+        roundWins: cumulativeRoundWins,
       };
     });
 
