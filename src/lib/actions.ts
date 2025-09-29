@@ -245,8 +245,8 @@ export async function settleGameweek(gameweekId: string) {
         fixture.awayTeam
       )
 
-      if (outcome === "LOSS") {
-        // Eliminate the player
+      if (outcome === "LOSS" || outcome === "DRAW") {
+        // Eliminate the player (both losses and draws eliminate)
         await prisma.entry.update({
           where: { id: pick.entryId },
           data: {
@@ -258,7 +258,11 @@ export async function settleGameweek(gameweekId: string) {
     }
 
     // Check if round should end (only one player remaining)
-    const aliveEntries = entries.filter(entry => entry.livesRemaining > 0)
+    // Get updated entries after processing eliminations
+    const updatedEntries = await prisma.entry.findMany({
+      where: { roundId: currentRound.id },
+    })
+    const aliveEntries = updatedEntries.filter(entry => entry.livesRemaining > 0)
     
     if (aliveEntries.length === 1) {
       // Round winner found
