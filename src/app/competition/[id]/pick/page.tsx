@@ -171,9 +171,39 @@ export default async function PickPage({ params }: PickPageProps) {
   }
 
   // For pick changes, exclude the current gameweek's pick from used teams
-  // Only consider picks from the current round
+  // Only consider picks from the current round by filtering based on round start time
+  
+  // Get the current round to determine when it started
+  const currentRound = await prisma.round.findFirst({
+    where: {
+      id: entry.roundId,
+    },
+  })
+  
+  if (!currentRound) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+          <p className="text-gray-600">Current round not found</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Filter picks to only include those made after the current round started
   const usedTeams = entry.picks
-    .filter((pick: any) => pick.gameweekId !== nextGameweek.id && pick.gameweek.roundId === entry.roundId)
+    .filter((pick: any) => {
+      // Exclude current gameweek's pick
+      if (pick.gameweekId === nextGameweek.id) {
+        return false
+      }
+      // Only include picks made after the current round started
+      if (pick.createdAt < currentRound.createdAt) {
+        return false
+      }
+      return true
+    })
     .map((pick: any) => pick.team)
 
   return (

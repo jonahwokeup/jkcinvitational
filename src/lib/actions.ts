@@ -142,7 +142,13 @@ export async function createPick(formData: FormData) {
         competitionId: fixture.gameweek.competitionId,
         roundId: { not: null },
       },
-      include: { picks: true },
+      include: { 
+        picks: {
+          include: {
+            gameweek: true
+          }
+        }
+      },
     })
 
     if (!entry) {
@@ -157,9 +163,32 @@ export async function createPick(formData: FormData) {
     const pickedTeam = team === fixture.homeTeam ? fixture.homeTeam : fixture.awayTeam
 
     // Check if team has already been used in this round (excluding current pick if updating)
-    // Only consider picks from the current round
+    // Only consider picks from the current round by filtering based on round start time
+    
+    // Get the current round to determine when it started
+    const currentRound = await prisma.round.findFirst({
+      where: {
+        id: entry.roundId,
+      },
+    })
+    
+    if (!currentRound) {
+      return { error: "Current round not found" }
+    }
+    
+    // Filter picks to only include those made after the current round started
     const usedTeams = entry.picks
-      .filter(pick => pick.gameweek.roundId === entry.roundId && (!pickId || pick.id !== pickId))
+      .filter(pick => {
+        // Only include picks made after the current round started
+        if (pick.createdAt < currentRound.createdAt) {
+          return false
+        }
+        // Exclude current pick if updating
+        if (pickId && pick.id === pickId) {
+          return false
+        }
+        return true
+      })
       .map(pick => pick.team)
     
     if (usedTeams.includes(pickedTeam)) {
