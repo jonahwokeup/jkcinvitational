@@ -171,8 +171,9 @@ export default async function PickPage({ params }: PickPageProps) {
   }
 
   // For pick changes, exclude the current gameweek's pick from used teams
+  // Only consider picks from the current round
   const usedTeams = entry.picks
-    .filter((pick: any) => pick.gameweekId !== nextGameweek.id)
+    .filter((pick: any) => pick.gameweekId !== nextGameweek.id && pick.gameweek.roundId === entry.roundId)
     .map((pick: any) => pick.team)
 
   return (

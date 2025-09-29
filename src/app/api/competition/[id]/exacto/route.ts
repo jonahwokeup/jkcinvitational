@@ -53,8 +53,14 @@ export async function GET(
     }
 
     // Get teams already used in this round (including losing picks, but only from gameweeks where user survived)
+    // Only consider picks from the current round
     const usedTeams = userEntry.picks
       .filter(pick => {
+        // Only include picks from the current round
+        if (pick.gameweek.roundId !== userEntry.roundId) {
+          return false
+        }
+        
         // Only include picks from gameweeks where the user actually survived
         // If user was eliminated in GW3, don't include their GW4 pick in "teams used"
         const pickGameweek = pick.gameweek

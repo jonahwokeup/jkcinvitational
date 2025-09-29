@@ -157,8 +157,9 @@ export async function createPick(formData: FormData) {
     const pickedTeam = team === fixture.homeTeam ? fixture.homeTeam : fixture.awayTeam
 
     // Check if team has already been used in this round (excluding current pick if updating)
+    // Only consider picks from the current round
     const usedTeams = entry.picks
-      .filter(pick => !pickId || pick.id !== pickId)
+      .filter(pick => pick.gameweek.roundId === entry.roundId && (!pickId || pick.id !== pickId))
       .map(pick => pick.team)
     
     if (usedTeams.includes(pickedTeam)) {
@@ -299,8 +300,12 @@ export async function settleGameweek(gameweekId: string) {
           roundId: newRound.id,
           livesRemaining: gameweek.competition.livesPerRound,
           eliminatedAtGw: null,
+          usedExacto: false, // Reset exacto usage for new round
         },
       })
+
+      // Note: We don't delete picks to preserve historical data for Insights page
+      // The "Teams Used" will be calculated from picks in the current round only
     }
 
     // Mark gameweek as settled

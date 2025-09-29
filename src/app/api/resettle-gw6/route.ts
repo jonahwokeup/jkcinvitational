@@ -122,8 +122,12 @@ export async function POST(request: NextRequest) {
           roundId: newRound.id,
           livesRemaining: gameweek.competition.livesPerRound,
           eliminatedAtGw: null,
+          usedExacto: false, // Reset exacto usage for new round
         },
       })
+
+      // Note: We don't delete picks to preserve historical data for Insights page
+      // The "Teams Used" will be calculated from picks in the current round only
 
       details.push(`Round 2 started - all players reset with ${gameweek.competition.livesPerRound} lives`)
     }
