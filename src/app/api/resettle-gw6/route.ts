@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
         })
         
         eliminatedCount++
-        details.push(`${pick.entry.user.name} eliminated (${pick.team} - ${outcome})`)
+        details.push(`${pick.entry.user?.name || "Unknown"} eliminated (${pick.team} - ${outcome})`)
       } else if (outcome === "WIN") {
-        details.push(`${pick.entry.user.name} survived (${pick.team} - ${outcome})`)
+        details.push(`${pick.entry.user?.name || "Unknown"} survived (${pick.team} - ${outcome})`)
       }
     }
 
@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
       })
 
       roundEnded = true
-      winnerName = winner.user.name
-      details.push(`🎉 Round 1 Winner: ${winner.user.name}!`)
+      winnerName = winner.user?.name || "Unknown"
+      details.push(`🎉 Round 1 Winner: ${winner.user?.name || "Unknown"}!`)
 
       // Start new round
       const newRound = await prisma.round.create({
