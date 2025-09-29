@@ -42,7 +42,14 @@ export async function GET(
       include: {
         picks: {
           include: {
-            gameweek: true
+            gameweek: {
+              select: {
+                id: true,
+                gameweekNumber: true,
+                roundId: true,
+                competitionId: true
+              }
+            }
           }
         }
       }
