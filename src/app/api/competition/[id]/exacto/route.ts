@@ -42,14 +42,7 @@ export async function GET(
       include: {
         picks: {
           include: {
-            gameweek: {
-              select: {
-                id: true,
-                gameweekNumber: true,
-                roundId: true,
-                competitionId: true
-              }
-            }
+            gameweek: true
           }
         }
       }
@@ -60,11 +53,25 @@ export async function GET(
     }
 
     // Get teams already used in this round (including losing picks, but only from gameweeks where user survived)
-    // Only consider picks from the current round
+    // Only consider picks from the current round by filtering based on round start time
+    
+    // Get the current round to determine when it started
+    const currentRound = await prisma.round.findFirst({
+      where: {
+        competitionId,
+        endedAt: null, // Current active round
+      },
+    })
+    
+    if (!currentRound) {
+      return NextResponse.json({ success: false, error: 'No active round found' }, { status: 404 })
+    }
+    
+    // Filter picks to only include those made after the current round started
     const usedTeams = userEntry.picks
       .filter(pick => {
-        // Only include picks from the current round
-        if (pick.gameweek.roundId !== userEntry.roundId) {
+        // Only include picks made after the current round started
+        if (pick.createdAt < currentRound.createdAt) {
           return false
         }
         
