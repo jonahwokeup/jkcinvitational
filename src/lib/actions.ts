@@ -166,6 +166,10 @@ export async function createPick(formData: FormData) {
     // Only consider picks from the current round by filtering based on round start time
     
     // Get the current round to determine when it started
+    if (!entry.roundId) {
+      return { error: "No active round found" }
+    }
+    
     const currentRound = await prisma.round.findFirst({
       where: {
         id: entry.roundId,

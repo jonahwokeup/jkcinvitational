@@ -174,6 +174,17 @@ export default async function PickPage({ params }: PickPageProps) {
   // Only consider picks from the current round by filtering based on round start time
   
   // Get the current round to determine when it started
+  if (!entry.roundId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+          <p className="text-gray-600">No active round found</p>
+        </div>
+      </div>
+    )
+  }
+  
   const currentRound = await prisma.round.findFirst({
     where: {
       id: entry.roundId,
