@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     // Get updated entries after processing eliminations
     const updatedEntries = await prisma.entry.findMany({
       where: { roundId: currentRound.id },
+      include: { user: true },
     })
     const aliveEntries = updatedEntries.filter(entry => entry.livesRemaining > 0)
     
