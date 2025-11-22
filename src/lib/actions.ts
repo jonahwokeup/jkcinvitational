@@ -149,8 +149,17 @@ export async function createPick(formData: FormData) {
       return { error: "You are not in this competition" }
     }
 
-    if (entry.livesRemaining <= 0) {
-      return { error: "You are eliminated from this round" }
+    // Allow exacto picks: eliminated players can make picks for gameweeks AFTER their elimination
+    const isEliminated = entry.livesRemaining <= 0
+    if (isEliminated) {
+      if (entry.eliminatedAtGw === null) {
+        return { error: "You are eliminated from this round" }
+      }
+      // Check if this gameweek is after the elimination gameweek (exacto allowed)
+      if (fixture.gameweek.gameweekNumber <= entry.eliminatedAtGw) {
+        return { error: "You are eliminated from this round. You can only make exacto picks for gameweeks after your elimination." }
+      }
+      // If we get here, this is an exacto pick (gameweek > eliminatedAtGw) - allow it
     }
 
     // Determine which team the user picked (home or away)
@@ -244,8 +253,8 @@ export async function settleGameweek(gameweekId: string) {
         fixture.awayTeam
       )
 
-      if (outcome === "LOSS") {
-        // Eliminate the player
+      // Eliminate the player if they lost or drew (only WIN allows survival)
+      if (outcome === "LOSS" || outcome === "DRAW") {
         await prisma.entry.update({
           where: { id: pick.entryId },
           data: {
@@ -636,8 +645,8 @@ async function processFixturePicks(fixtureId: string, homeGoals: number, awayGoa
         else result = 'LOSS'
       }
       
-      // If player lost, eliminate them IMMEDIATELY
-      if (result === 'LOSS') {
+      // If player lost or drew, eliminate them IMMEDIATELY (only WIN allows survival)
+      if (result === 'LOSS' || result === 'DRAW') {
         await prisma.entry.update({
           where: { id: pick.entry.id },
           data: {
@@ -721,8 +730,8 @@ async function processGameweekResults(gameweekId: string) {
           else result = 'LOSS'
         }
         
-        // If player lost, eliminate them
-        if (result === 'LOSS') {
+        // If player lost or drew, eliminate them (only WIN allows survival)
+        if (result === 'LOSS' || result === 'DRAW') {
           await prisma.entry.update({
             where: { id: pick.entry.id },
             data: {

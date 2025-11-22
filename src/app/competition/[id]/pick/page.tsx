@@ -103,14 +103,22 @@ export default async function PickPage({ params }: PickPageProps) {
     redirect(`/competition/${competition.id}`)
   }
 
-  if (entry.livesRemaining <= 0) {
+  // Check if eliminated and if exacto is allowed
+  const isEliminated = entry.livesRemaining <= 0
+  const canMakeExacto = isEliminated && entry.eliminatedAtGw !== null && nextGameweek.gameweekNumber > entry.eliminatedAtGw
+  
+  if (isEliminated && !canMakeExacto) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <X className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-4">You&apos;re Eliminated</h1>
-            <p className="text-gray-600 mb-6">You cannot make picks in this round.</p>
+            <p className="text-gray-600 mb-6">
+              {entry.eliminatedAtGw 
+                ? `You were eliminated in Gameweek ${entry.eliminatedAtGw}. You can make exacto picks for gameweeks after your elimination.`
+                : "You cannot make picks in this round."}
+            </p>
             <Link
               href={`/competition/${competition.id}`}
               className="inline-block px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
@@ -247,11 +255,21 @@ export default async function PickPage({ params }: PickPageProps) {
           </div>
         )}
 
+        {/* Exacto Notice */}
+        {canMakeExacto && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Exacto Pick</h3>
+            <p className="text-blue-800">
+              You were eliminated in Gameweek {entry.eliminatedAtGw}. You can make an exacto pick for Gameweek {nextGameweek.gameweekNumber}.
+            </p>
+          </div>
+        )}
+
         {/* Pick Form */}
         {!isLocked ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {existingPick ? 'Change Your Pick' : 'Select Your Team'}
+              {canMakeExacto ? 'Make Your Exacto Pick' : existingPick ? 'Change Your Pick' : 'Select Your Team'}
             </h3>
             <PickForm
               fixtures={nextGameweek.fixtures}
